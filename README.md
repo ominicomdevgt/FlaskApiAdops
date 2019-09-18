@@ -107,3 +107,16 @@ $ sudo supervisord status
    [PlMe]: <https://github.com/joemccann/dillinger/tree/master/plugins/medium/README.md>
    [PlGa]: <https://github.com/RahulHP/dillinger/blob/master/plugins/googleanalytics/README.md>
 # FlaskApiAdops
+
+Comandos para reiniciar el supervisor
+```sh
+$ sudo su 
+$ systemctl reboot supervisord
+$ systemctl start supervisord
+```
+Comandos para saber si esta activo el supervisor
+```sh
+$ sudo su 
+$ systemctl status supervisord
+```
+
