@@ -4,7 +4,8 @@ import sys
 from flask import jsonify
 from app import app, db
 from flask_restful import reqparse, abort, Api, Resource
-from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema
+from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion, aprobacionSchema,Results_campaings,Results_campaingsSchema
+import models
 from flask_sqlalchemy import SQLAlchemy,time
 from flask_marshmallow import Marshmallow
 from datetime import datetime, timedelta
@@ -12,7 +13,7 @@ import os
 from flask_jwt_extended import create_access_token, create_refresh_token,jwt_required, jwt_refresh_token_required, get_jwt_identity,JWTManager
 import jwt
 import re
-from sqlalchemy.sql import func,text
+from sqlalchemy.sql import func,text, desc
 import numpy as mp
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 
@@ -22,6 +23,7 @@ api = Api(app)
 
 
 class GetBitacora(Resource):
+    @jwt_required
     def get(self):
         try:
             bitacora_shema = BitacoraSchema()
@@ -35,6 +37,7 @@ class GetBitacora(Resource):
             print(datetime.now())
 
 class GetBitacoraFull(Resource):
+    @jwt_required
     def get(self):
         try:
             bitacora_shema = BitacoraSchema()
@@ -45,10 +48,12 @@ class GetBitacoraFull(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
 class GetBitacoraFiles(Resource):
+    @jwt_required
     def get(self):
         try:
             bitacora_shema = BitacoraSchema()
@@ -60,10 +65,12 @@ class GetBitacoraFiles(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
 class GetAccountxMarca(Resource):
+    # @jwt_required
     def get(self,idMarca):
         try:
             dmarcaSchema = AccountxMarcaSchema()
@@ -86,17 +93,21 @@ class GetAccountxMarca(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
 
+
 class PostMarcaxAccount(Resource):
+     #@jwt_required idAccount
      def post(self,idAccount,idMarca,Estado,User):
-        busqueda = Accountxmarca.query.filter(Accountxmarca.account == idAccount, Accountxmarca.marca==idMarca).first()
+        busqueda = db.session.query(Accountxmarca.idAccountxMarca).filter(Accountxmarca.account == idAccount, Accountxmarca.marca==idMarca).first()
         try:
             if busqueda:
                 if int(Estado) == 0:
-                    db.session.delete(busqueda)
+
+                    Accountxmarca.query.filter(Accountxmarca.idAccountxMarca == busqueda.idAccountxMarca).delete()
                     db.session.commit()
                     return 'Account Marca Eliminado', 202
             else:
@@ -109,30 +120,34 @@ class PostMarcaxAccount(Resource):
             print(e)
             return 'Cuenta o Marca no encontrada', 400
         finally:
+            db.session.close()
             pass
 
 
 
 class GetAccount(Resource):
+    @jwt_required
     def get(self):
         try:
             accountSchema = AccountsSchema()
             accountSchema = AccountsSchema(many=True)
-            account = Accounts.query.all()
+            account =  db.session.query(Accounts.AccountsID, Accounts.Account, Accounts.Media,Accounts.CreateDate,Accounts.Country ).order_by(Accounts.AccountsID.desc()).all()
             result = accountSchema.dump(account)
             return result
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 class GetAccountNames(Resource):
+    @jwt_required
     def get(self):
         try:
             Names=[]
             accountSchema = AccountsSchema()
             accountSchema = AccountsSchema(many=True)
-            account = Accounts.query.all()
+            account =  db.session.query(Accounts.AccountsID, Accounts.Account, Accounts.Media,Accounts.CreateDate,Accounts.Country ).order_by(Accounts.AccountsID.desc()).all()
             result = accountSchema.dump(account)
             for x in result:
                 Names.append(x['Account'])
@@ -140,22 +155,26 @@ class GetAccountNames(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 class GetDmarca(Resource):
+    @jwt_required
     def get(self):
         try:
             dmarca_shema = DmarcaSchema()
             dmarca_shema = DmarcaSchema(many=True)
-            dmarca = db.session.query(Dmarca.id,Dmarca.fullname(Dmarca,Dcliente.nombre).label("fullname")).join().filter(Dmarca.idcliente == Dcliente.id).all()
+            dmarca = db.session.query(Dmarca.id,Dmarca.fullname(Dmarca,Dcliente.nombre).label("fullname")).join().filter(Dmarca.idcliente == Dcliente.id).distinct(Dmarca.id).all()
             result = dmarca_shema.dump(dmarca)
             return result
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 class GetDmarcaName(Resource):
+    @jwt_required
     def get(self):
         try:
             Names=[]
@@ -170,10 +189,12 @@ class GetDmarcaName(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
 class CRUDAccount(Resource):
+    @jwt_required
     def post(self,idAccount,Account,Medio,Country):
         try:
             a = Accounts(idAccount,Account,Medio,Country)
@@ -184,7 +205,9 @@ class CRUDAccount(Resource):
             print(e)
             return 'Account no Ingresada', 400
         finally:
+            db.session.close()
             pass
+    @jwt_required
     def put(self,idAccount,Account,Medio,Country):
         try:
             a = Accounts.query.filter(Accounts.AccountsID==idAccount).first()
@@ -197,8 +220,9 @@ class CRUDAccount(Resource):
             print(e)
             return 'Account no Ingresada', 400
         finally:
+            db.session.close()
             pass
-
+    @jwt_required
     def delete(self,idAccount,Account,Medio,Country):
         try:
             Accounts.query.filter(Accounts.AccountsID == idAccount).delete()
@@ -208,6 +232,7 @@ class CRUDAccount(Resource):
             print(e)
             return 'Account no Ingresada', 400
         finally:
+            db.session.close()
             pass
 
 class TokenJWT(Resource):
@@ -222,20 +247,21 @@ class TokenJWT(Resource):
         except Exception as e:
             return e
 
+
 class GetErrores(Resource):
     @jwt_required
-
     def get(self,idusuario):
         try:
-
             dmarcaSchema = ErrorsCampaingsSchema()
             dmarcaSchema = ErrorsCampaingsSchema(many=True)
             hoy = datetime.now().strftime("%Y-%m-%d")
             query = db.session.query('iderror','idcuenta','cuenta','CampaingID','Camapingname','Error','TipoErrorID','DescripcionError','GrupoError','Icono','Comentario','Estado','Media','Fecha','tipousuario','plataforma','marca','cliente')
             query = query.from_statement(text("""
-            (Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,d.Account as cuenta,a.CampaingID,b.Campaingname Camapingname,a.Error,a.TipoErrorID, c.Descripcion as DescripcionError,c.GrupoError,c.Icono,a.Comentario,a.Estado, a.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,c.tipousuario,d.Media as plataforma, IFNULL( m.nombre,"SIN ASIGNAR") marca, IFNULL(cl.nombre,"SIN ASIGNAR") cliente
+            (Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,d.Account as cuenta,a.CampaingID,b.Campaingname Camapingname,a.Error,a.TipoErrorID, c.Descripcion as DescripcionError,c.GrupoError,c.Icono,a.Comentario,a.Estado, d.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,c.tipousuario,d.Media as plataforma, IFNULL( m.id,"SIN ASIGNAR") marca, IFNULL(cl.id,"SIN ASIGNAR") cliente
                 from ErrorsCampaings a
+
                 INNER JOIN Campaings b on a.CampaingID=b.CampaingID
+
                 INNER JOIN Accounts  d on b.AccountsID=d.AccountsID
                 INNER JOIN TiposErrores c on a.TipoErrorID=c.TipoErrorID
                 left JOIN accountxmarca am on am.account = d.AccountsID
@@ -245,34 +271,115 @@ class GetErrores(Resource):
                 where
                 a.Estado>0
                 and
-                b.EndDate > "{}"
+                b.EndDate > "{}" and d.Media !='AM'
                 and
                 (a.StatusCampaing="ACTIVE"
                 or a.StatusCampaing="enabled")
-                and asg.idusuario = {})
-                union all
-                ( select distinct a1.idErrorsCampaings as iderror,b1.AccountsID as idcuenta, b1.AccountsID as cuenta, a1.CampaingID, b1.Campaingname Camapingname, a1.Error, a1.TipoErrorID, c1.Descripcion as DescripcionError,c1.GrupoError,c1.Icono,a1.Comentario,a1.Estado,a1.Media, DATE_FORMAT(a1.CreateDate, "%d/%m/%Y") as Fecha,c1.TipoUsuario,d1.Media as plataforma, "SIN ASIGNAR" marca, "SIN ASIGNAR" cliente
-                from ErrorsCampaings a1
-                inner join CampaingsAM b1 on b1.CampaingID = a1.CampaingID
-                inner join TiposErrores c1 on c1.TipoErrorID = a1.TipoErrorID
-                INNER JOIN Accounts  d1 on b1.AccountsID=d1.AccountsID
-                left JOIN accountxmarca am1 on am1.account = d1.AccountsID
-                left JOIN mfcgt.dmarca m1 on m1.id = am1.marca
-                left join mfcgt.mfcasignacion asg1 on asg1.idmarca = m1.id
-                where a1.Estado >0 )
+                and asg.idusuario = {}
+                group by a.idErrorsCampaings
                 order by idcuenta, fecha desc
+                )
+                Union all (
+                Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,d.Account as cuenta,a.CampaingID,
+                b.Campaingname Camapingname,a.Error,a.TipoErrorID, c.Descripcion as DescripcionError,
+                c.GrupoError,c.Icono,a.Comentario,a.Estado, d.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,
+                c.tipousuario,d.Media as plataforma,"SIN ASIGNAR" marca, "SIN ASIGNAR" cliente
+                from ErrorsCampaings a
+
+                INNER JOIN Campaings b on a.CampaingID=b.CampaingID
+
+                INNER JOIN Accounts  d on b.AccountsID=d.AccountsID
+                INNER JOIN TiposErrores c on a.TipoErrorID=c.TipoErrorID
+
+                where
+                a.Estado>0 and d.Media = 'AM'
+                group by a.idErrorsCampaings
+                order by idcuenta, fecha desc);
             """.format(hoy,idusuario)))
             result = dmarcaSchema.dump(query)
-            return result
+            return jsonify(result)
 
         except Exception as e:
-            return {"reason": "unauthorized","message": "You are not authorized to use this service Adops-OMG"}, 401
-            print(e)
+            return {"reason": "unauthorized","message":  str(e)}, 401
+
         finally:
+            db.session.close()
+            print(datetime.now())
+
+
+class GetCountsErrores(Resource):
+
+    #@jwt_required
+    def get(self,idusuario):
+        try:
+            dmarcaSchema = ErrorsCampaingsCountSchema()
+            dmarcaSchema = ErrorsCampaingsCountSchema(many=True)
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            query = db.session.query('totales', 'totalinversion','totalnomeclatura','totalpaises' , 'ordenesdecompra','errorconsumo')
+            query = query.from_statement(text("""
+            select
+            (select count(distinct e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}'and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and e.Media !='AM' )  as totales,
+            (select count(distinct  e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}'and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and  e.TipoErrorID in (2,3,4,5) and e.Media !='AM')  as totalinversion,
+            (select count(distinct e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}'and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and  e.TipoErrorID in (1) and e.Media !='AM' )  as totalnomeclatura,
+            (select count(distinct e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}'and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and  e.TipoErrorID in (6))  as totalpaises,
+            (select count(distinct e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}' and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and  e.TipoErrorID in (7,8,9,10,11,12)) as ordenesdecompra,
+            (select count(distinct e.idErrorsCampaings) from ErrorsCampaings e
+				inner join Campaings c on c.CampaingID = e.CampaingID
+				inner join Accounts a on a.AccountsID =  c.AccountsID
+				inner join accountxmarca am on am.account = a.AccountsID
+				inner join mfcgt.dmarca m on m.id = am.marca
+				inner JOIN mfcgt.dcliente cl on cl.id = m.idcliente
+				inner join mfcgt.mfcasignacion asg on asg.idmarca = m.id
+				where e.Estado = 1 and c.EndDate > '{}' and  e.StatusCampaing in ('ACTIVE','enabled') and asg.idusuario = {} and  e.TipoErrorID  in (13,14,15)) as errorconsumo
+            from ErrorsCampaings
+            limit 1;
+            """.format(hoy,idusuario,hoy,idusuario,hoy,idusuario,hoy,idusuario,hoy,idusuario,hoy,idusuario)))
+            result = dmarcaSchema.dump(query)
+            return jsonify(result)
+        except Exception as e:
+            return {"reason": "unauthorized","message": str(e)}, 401
+        finally:
+            db.session.close()
             print(datetime.now())
 
 
 class GetErroresCount(Resource):
+    @jwt_required
     def get(self,idusuario):
         try:
             dmarcaSchema = ErrorsCampaingsSchema()
@@ -288,6 +395,7 @@ class GetErroresCount(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
@@ -306,101 +414,278 @@ class SecretResource(Resource):
         except:
             return {'message': 'Something went wrong'}, 500
 
-class LoginS(Resource):
-    def get(self, user,pas):
-
-        access_token = jwt.encode({'public_id':'chupame el perro','exp': datetime.utcnow() + timedelta(minutes=30)},app.config['SECRET_KEY'])
-        access_token = create_access_token('perro')
-        return jsonify({'token' : access_token })
-
-
-class UploadImage(Resource):
-    def post(self, fname):
-        try:
-            file = request.files['file']
-
-        except:
-            # return error
-            return {'False'}
-
+class GenToken(Resource):
+    def get(self,idusuario):
+        #Para produccion colocarlo
+        JWTManager(app)
+        expires = timedelta(days=1)
+        access_token = create_access_token('api-flask-adops-!@#$',expires_delta=expires)
+        return jsonify({'token' : access_token,
+        'id':'123' })
 
 
 class GetReporte(Resource):
+    @jwt_required
     def get(self,idusuario):
         try:
+            hoy = datetime.now().strftime("%Y-%m-%d")
             campaings = []
             report = ReportSchema()
             report = ReportSchema(many=True)
-            query = db.session.query('Account','CampaingID', 'Media','Campaingname','Cost','StartDate' ,  'EndDate' ,   'presupuesto',  'objetivo', 'result','State', 'TotalDias', 'DiasServidos','DiasPorservir',
-            'ValorEsperado', 'ValorReal','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'KPIReal','PorcentajeEsperadoK','PorcentajeRealK')
+            query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP')
             query = query.from_statement(text("""
-                    select  a.Account as Account ,c.CampaingID CampaingID,  a.Media Media,  c.Campaingname Campaingname,sum(d.Cost) Cost, date_format(c.StartDate, '%Y-%m-%d') StartDate ,
-                    date_format(c.EndDate,'%Y-%m-%d') EndDate , SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 11),'_',-1) presupuesto,
-                    SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 13),'_',-1) objetivo,ifnull(sum(d.result),0) result,c.Campaignstatus State, '0' as 'TotalDias',"0" as 'DiasServidos',"0" as 'DiasPorservir',
-                    "0" as 'ValorEsperado',"0" as 'ValorReal', "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'KPIReal', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK'
-                    from Dailycampaing d
+                    select  dc.nombre as Account, dc.id idcliente,m.id idmarca ,c.CampaingID CampaingID,  a.Media Media,  c.Campaingname Campaingname, round(sum(distinct d.Cost),2) as 'InversionConsumida',
+                    date_format(ifnull( c.StartDate,str_to_date(cd.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , m.nombre as Marca,
+                    date_format(ifnull( c.EndDate,str_to_date(cd.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , ifnull(cd.costo,ifnull(cd.multiplescostosb,cd.bonificacion))  PresupuestoPlan,cd.rating KPIPlanificado,
+                    ob.Nombre KPI,ob.abreviatura abr,ifnull(sum(distinct d.result),0) 'KPIConsumido',c.Campaignstatus State,m.nombre Marca ,dc.nombre Cliente,date_format(now(),'%M') mes,
+                    '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                    "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', cd.rating' CostoPorResultadoP'
+                    from dailycampaing d
                     inner join Campaings c on c.CampaingID = d.CampaingID
                     inner join Accounts a on c.AccountsID = a.AccountsID
-                    inner join Accountxmarca am on am.account = a.AccountsID
+                    inner join accountxmarca am on am.account = a.AccountsID
                     inner join mfcgt.mfcasignacion asg on asg.idmarca = am.marca
-                    where c.Campaignstatus in ('ACTIVE','enabled')   and asg.idusuario = {}
+                    inner join mfcgt.dmarca m on am.marca = m.id
+                    inner join mfcgt.dcliente dc on dc.id = m.idcliente
+                    inner join mfcgt.mfccompradiaria cd on c.Campaingname = cd.multiplestiposg
+                    inner join mfcgt.dformatodigital df on df.id = cd.idformatodigital
+					inner join mfcgt.danuncio da on da.id = df.idanuncio
+					inner join mfcgt.dmetrica me on me.id = da.idmetrica
+					inner join mfcgt.dobjetivo ob on ob.id = me.idobjetivo
+                    where c.Campaignstatus in ('ACTIVE','enabled')  and asg.idusuario = {}
+                    and date_format(str_to_date(cd.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
                     group by d.CampaingID;
-                    """.format(idusuario)))
+                    """.format(idusuario,hoy)))
             result = report.dump(query)
             for row in result:
-                Nomenclatura = row['Campaingname']
-                searchObj = re.search(r'^(GT|CAM|RD|US|SV|HN|NI|CR|PA|RD|PN|CHI|HUE|PR)_([a-zA-ZáéíóúÁÉÍÓÚÑñ\s0-9-/.+&]+)_([a-zA-Z0-9-/.+&]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&]+)_([a-zA-Z-/.+]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ.+]+)_(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)_(19|2019)_([0-9,.]+)_(BA|AL|TR|TRRS|TRRRSS|IN|DES|RV|CO)_([0-9,.]+)_(CPM|CPMA|CPVi|CPC|CPI|CPD|CPV|CPCo|CPME|CPE|PF|RF|MC|CPCO|CPCO)_([0-9.,]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ.+]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ.+]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ.+]+)_([0-9,.-]+)?(_B-)?(_)?([0-9.]+)?(_S-)?(_)?([0-9.]+)?(\s)?(\(([0-9.)]+)\))?$', Nomenclatura, re.M | re.I)
-                if searchObj:
-                    if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
-                        Start = datetime.strptime(row['StartDate'], "%Y-%m-%d")
-                        End = datetime.strptime(row['EndDate'], "%Y-%m-%d")
-                        row['TotalDias'] = End - Start
-                        row['DiasServidos'] = datetime.now() -  Start
-                        row['DiasPorservir'] = End - datetime.now()
-                        if row['TotalDias'].days > 0:
-                            porcentDay = row['DiasServidos'].days / (row['TotalDias'].days)
-                        row['ValorEsperado'] = round(float(row['presupuesto']) * porcentDay,2)
-                        if float( row['presupuesto']) > 0:
-                            row['PorcentajeEsperadoV'] = round(float( row['ValorEsperado'])/ float( row['presupuesto']),2)
-                            row['PorcentajeRealV'] = round(float(row['Cost'])/ float(row['presupuesto']),2)
-                        row['KPIEsperado'] = round(float(row['objetivo']) * porcentDay,2)
-                        if float( row['objetivo']) > 0:
-                            row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['objetivo']),2)
-                            row['PorcentajeRealK'] = round(float(row['result'])/ float(row['objetivo']),2)
-                        row['TotalDias'] = row['TotalDias'].days
-                        row['DiasServidos'] = row['DiasServidos'].days
-                        row['DiasPorservir'] = row['DiasPorservir'].days
-                        campaings.append(row)
+                        Nomenclatura = row['Campaingname']
+                        if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
+                            row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] ) * 1000
+                        else:
+                            row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] )
+                        if Nomenclatura:
+                            if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
+                                Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
+                                End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                                row['TotalDias'] = End - Start
+                                row['DiasEjecutados'] = datetime.now() -  Start
+                                row['DiasPorservir'] = End - datetime.now()
+                                if row['TotalDias'].days > 0:
+                                    porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
+                                else:
+                                    porcentDay = 1
+                                row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
+                                if float( row['PresupuestoPlan']) > 0:
+                                    row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
+                                    row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
+                                    row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
+                                row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
+                                if float( row['KPIPlanificado']) > 0:
+                                    row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
+                                    row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
+                                    row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
+                                row['TotalDias'] = row['TotalDias'].days
+                                row['DiasEjecutados'] = row['DiasEjecutados'].days
+                                row['DiasPorservir'] = row['DiasPorservir'].days + 1
+                                if porcentDay <= 0.25:
+                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.15:
+                                        row['EstadoPresupuesto'] =  1
+                                    if abs(float(row['PorcentajeKPI'])) <= 0.15:
+                                        row['EstadoKPI'] =  1
+                                elif porcentDay > 0.25 and porcentDay <=0.50:
+                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.10:
+                                        row['EstadoPresupuesto'] =  1
+                                    if abs(float(row['PorcentajeKPI'])) <= 0.10:
+                                        row['EstadoKPI'] =  1
+                                elif porcentDay > 0.50 and porcentDay <=0.85:
+                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.05:
+                                        row['EstadoPresupuesto'] =  1
+                                    if abs(float(row['PorcentajeKPI'])) <= 0.05:
+                                        row['EstadoKPI'] =  1
+                                elif porcentDay > 0.85:
+                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.01:
+                                        row['EstadoPresupuesto'] =  1
+                                    if abs(float(row['PorcentajeKPI'])) <= 0.01:
+                                        row['EstadoKPI'] =  1
+                                row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
+                                row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
+                                row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
+                                row['PorcentajeEsperadoK'] = row['PorcentajeEsperadoK'] * 100
+                                row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
+                                row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
+                                row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
+                                if row['PorcentajeEsperadoK'] > 0:
+                                    row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['PorcentajeEsperadoK'],2)
+                                if row['KPIConsumido'] > 0:
+                                    row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
+                                if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
+                                    row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
+                                    row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                                campaings.append(row)
             campaings = jsonify(campaings)
             return campaings
 
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
+class GetReporteCliente(Resource):
+    #@jwt_required
+    def get(self,idcliente):
+        try:
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            campaings = []
+            report = ReportSchema()
+            report = ReportSchema(many=True)
+            query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP')
+            query = query.from_statement(text("""
+                    select  dc.nombre as Account, dc.id idcliente,m.id idmarca ,c.CampaingID CampaingID,  a.Media Media,  c.Campaingname Campaingname, round(sum(distinct d.Cost),2) as 'InversionConsumida', date_format(c.StartDate, '%d/%m/%Y') StartDate , m.nombre as Marca,
+                    date_format(c.EndDate,'%d/%m/%Y') EndDate , SUBSTRING_INDEX(SUBSTRING_INDEX(c.Campaingname, '_', 11),'_',-1) as 'PresupuestoPlan',SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 13),'_',-1) KPIPlanificado,
+                    md.Nombre KPI,md.abr,ifnull(sum(distinct d.result),0) 'KPIConsumido',c.Campaignstatus State,m.nombre Marca ,dc.nombre Cliente,date_format(now(),'%M') mes,
+                    '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                    "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR',"0" as 'CostoPorResultadoP'
+                    from dailycampaing d
+                    inner join Campaings c on c.CampaingID = d.CampaingID
+                    inner join Accounts a on c.AccountsID = a.AccountsID
+                    inner join accountxmarca am on am.account = a.AccountsID
+                    inner join mfcgt.mfcasignacion asg on asg.idmarca = am.marca
+                    inner join mfcgt.dmarca m on am.marca = m.id
+                    inner join mfcgt.dcliente dc on dc.id = m.idcliente
+                    inner join modelocompra md on md.abr = SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 14),'_',-1)
+                    where dc.id = {} and c.Campaignstatus in ('ACTIVE','enabled')
+                    group by d.CampaingID;
+
+                    """.format(idcliente)))
+            result = report.dump(query)
+
+            for row in result:
+                        Nomenclatura = row['Campaingname']
+                        searchObj = re.search(r'([0-9,.]+)_(GT|CAM|RD|US|SV|HN|NI|CR|PA|RD|PN|CHI|HUE|PR)_([a-zA-ZáéíóúÁÉÍÓÚÑñ\s0-9-/.+&]+)_([a-zA-Z0-9-/.+&]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-Z-/.+]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ.+0-9]+)_(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)_(2019|19|20|2020)_([0-9,.]+)_(BA|AL|TR|TRRS|TRRRSS|IN|DES|RV|CO|MESAD|LE)_([0-9,.]+)_(CPM|CPMA|CPVi|CPC|CPI|CPD|CPV|CPCo|CPME|CPE|PF|RF|MC|CPCO|CPCO)_([0-9.,]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([0-9,.-]+)?(_B-)?(_)?([0-9.,]+)?(_S-)?(_)?([0-9.,]+)?(\(([0-9.)]+)\))?(/[0-9]+)', Nomenclatura, re.M | re.I)
+                        if searchObj:
+                            objcon = (searchObj.group(12))
+                            resultadoPlan = (searchObj.group(15))
+                            if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
+                                Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
+                                End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                                row['TotalDias'] = End - Start
+                                row['DiasEjecutados'] = datetime.strptime('2019-12-17', '%Y-%m-%d') -  Start
+                                row['DiasPorservir'] = End - datetime.strptime('2019-12-17', '%Y-%m-%d')
+                                if row['TotalDias'].days > 0:
+                                    porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
+                                row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
+                                if float( row['PresupuestoPlan']) > 0:
+                                    row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
+                                    row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
+                                    row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
+                                row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
+                                if float( row['KPIPlanificado']) > 0:
+                                    row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
+                                    row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
+                                    row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
+                                row['TotalDias'] = row['TotalDias'].days
+                                row['DiasEjecutados'] = row['DiasEjecutados'].days
+                                row['DiasPorservir'] = row['DiasPorservir'].days + 1
+
+                                if abs(float(row['PorcentajePresupuesto'])) <= 15:
+                                    row['EstadoPresupuesto'] =  1
+                                if abs(float(row['PorcentajeKPI'])) <= 15:
+                                    row['EstadoKPI'] =  1
+
+                                row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
+                                row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
+                                row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
+                                row['PorcentajeEsperadoK'] =  int(row['PorcentajeEsperadoK'] * 100)
+                                row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
+                                row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
+                                row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
+                                if row['KPIEsperado'] > 0:
+                                    row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['KPIEsperado'],2)
+                                if row['KPIConsumido'] > 0:
+                                    row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
+                                if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
+                                    row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
+                                    row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                                if str(objcon).upper() == 'MESAD':
+                                    row['KPI'] =  'Costo por Conversación'
+                                row['CostoPorResultadoP'] = float(resultadoPlan)
+                                campaings.append(row)
+
+            campaings = jsonify(campaings)
+            return campaings
+
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+
+class GetResults_Campaings(Resource):
+    #@jwt_required
+    def get(self,idMarca):
+        try:
+            lm = Results_campaingsSchema()
+            lm = Results_campaingsSchema(many=True)
+            data = db.session.query(Results_campaings.idResult,Results_campaings.Description,Results_campaings.Url,Results_campaings.Status,Results_campaings.idMarca).filter(Results_campaings.Status==1, Results_campaings.idMarca == idMarca).order_by(Results_campaings.Description).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+
+
+
 class GetReporteML(Resource):
+    @jwt_required
     def get(self,idusuario):
         try:
             lm = LocalMediaSchema()
             lm = LocalMediaSchema(many=True)
-            data = LocalMedia.query.all()
+            data = db.session.query(LocalMedia.LocalMediaID,LocalMedia.Medio,LocalMedia.Cliente,LocalMedia.Pais,LocalMedia.Campana,LocalMedia.StartDate,LocalMedia.EndDate,LocalMedia.Mes,LocalMedia.ODC,LocalMedia.State ).order_by(LocalMedia.LocalMediaID).all()
             result = lm.dump(data)
             result = jsonify(result)
             return result
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
+class GetReporteMLID(Resource):
+    @jwt_required
+    def get(self,idlocal):
+        try:
+            lm = LocalMediaSchema()
+            lm = LocalMediaSchema(many=True)
+            data = db.session.query(LocalMedia.LocalMediaID,LocalMedia.Medio,LocalMedia.Cliente,LocalMedia.Pais,LocalMedia.Campana,LocalMedia.EndDate,LocalMedia.Mes,LocalMedia.ODC,LocalMedia.State ).filter(LocalMedia.LocalMediaID == idlocal).order_by(LocalMedia.LocalMediaID).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+
+
+
+#('detailID', 'StartWeek','EndWeek', 'Nomenclatura', 'Formato','Objetivo','Impresiones', 'Clicks', 'Ctr', 'Consumo')
 class GetReporteDetailML(Resource):
+    @jwt_required
     def get(self,idlocal):
         try:
             lm = DetailLocalMediaSchema()
             lm = DetailLocalMediaSchema(many=True)
-            data = DetailLocalMedia.query.filter(DetailLocalMedia.LocalMediaID == idlocal).all()
+            data = db.session.query(DetailLocalMedia.detailID,DetailLocalMedia.StartWeek, DetailLocalMedia.EndWeek, DetailLocalMedia.Nomenclatura,DetailLocalMedia.Formato,DetailLocalMedia.Objetivo, DetailLocalMedia.Impresiones,DetailLocalMedia.Clicks,DetailLocalMedia.Ctr,DetailLocalMedia.Consumo ).filter(DetailLocalMedia.LocalMediaID == idlocal).all()
             result = lm.dump(data)
             result = jsonify(result)
             return result
@@ -408,9 +693,33 @@ class GetReporteDetailML(Resource):
             print(e)
         finally:
             print(datetime.now())
+    def put(self,idlocal):
+        try:
+            a = LocalMedia.query.filter(LocalMedia.LocalMediaID==idlocal).first()
+            a.State = 1
+            db.session.commit()
+            return 'Medio local actualizado correctamente Correctamente', 201
+        except Exception as e:
+            print(e)
+            return 'Account no Ingresada', 400
+        finally:
+            pass
+    def delete(self,idlocal):
+        try:
+            LocalMedia.query.filter(LocalMedia.LocalMediaID == idlocal).delete()
+            DetailLocalMedia.query.filter(DetailLocalMedia.LocalMediaID == idlocal).delete()
+            db.session.commit()
+            return 'Eliminado Correcatamente', 200
+        except Exception as e:
+            print(e)
+            return 'Account no Ingresada', 400
+        finally:
+            db.session.close()
+            pass
 
 
 class GetGroupByODClML(Resource):
+    @jwt_required
     def get(self):
         try:
             lm = LocalMediaSchema()
@@ -422,10 +731,12 @@ class GetGroupByODClML(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
             print(datetime.now())
 
 
 class GetReporteDetODC(Resource):
+    @jwt_required
     def get(self,Odc):
         try:
             lm = DetailLocalMediaSchema()
@@ -437,18 +748,317 @@ class GetReporteDetODC(Resource):
         except Exception as e:
             print(e)
         finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetCliente(Resource):
+    @jwt_required
+    def get(self,idusuario):
+        try:
+            cshema = DclienteSchema()
+            cshema = DclienteSchema(many=True)
+            query = db.session.query('id','nombre')
+            query = query.from_statement(text("""
+            select distinct c.id,c.nombre, asi.idusuario from mfcgt.mfcasignacion asi
+            inner join mfcgt.dmarca m on m.id = asi.idmarca
+            inner join mfcgt.dcliente c on c.id = m.idcliente
+            where asi.idusuario = {};
+            """.format(idusuario)))
+            result = cshema.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetClienteMarca(Resource):
+    @jwt_required
+    def get(self,idcliente):
+        try:
+            cshema = DclienteSchema()
+            cshema = DclienteSchema(many=True)
+            query = db.session.query('id','nombre')
+            query = query.from_statement(text("""
+            select m.id,m.nombre from mfcgt.dmarca m
+            inner join mfcgt.dcliente c on c.id = m.idcliente
+            where c.id =  {};
+            """.format(idcliente)))
+            result = cshema.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class PostEstadoErrors(Resource):
+    @jwt_required
+    def post(self,idError,idusuario):
+        try:
+            a = Errorscampaings.query.filter(Errorscampaings.iderrorscampaings==idError).first()
+            a.estado = 0
+            a.UsuarioOmitir = idusuario
+            db.session.commit()
+            return 'Error omitido correctamente Correctamente', 201
+        except Exception as e:
+            print(e)
+            return 'Error no omitido', 400
+        finally:
+            db.session.close()
+            pass
+
+class GetCostCamp(Resource):
+    @jwt_required
+    def get(self,campaing):
+        try:
+            cshema = CostSchema()
+            cshema = CostSchema(many=True)
+            campaing = campaing.replace('|', '/')
+            query = db.session.query('id','cost')
+            query = query.from_statement(text("""
+            select * from (select dc.id,c.Campaingname,  round(MAX(dc.Cost),2) cost from dailycampaing dc
+            inner join Campaings c on dc.CampaingID = c.CampaingID
+            group by c.CampaingID
+            union all
+            select h.CampaingID id,  Campaingname, (Cost) from HistoricCampaings h) as  t
+            where t.Campaingname ='{}'
+            ;
+            """.format(campaing)))
+            result = cshema.dump(query)
+            if result==[]:
+                result = None
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
             print(datetime.now())
 
 
+class PostDataLeads(Resource):
+    def post(self,CampaingID,Nombre,Telefono,NIT,DPI,Email,Ubicacion,Plataforma,Producto):
+
+
+        try:
+            a = LeadAdsCampaings(CampaingID,Nombre,Telefono,NIT,DPI,Email,Ubicacion,Plataforma,Producto)
+
+            db.session.add(a)
+            db.session.commit()
+            return 'Lead Ingresado Correctamente', 201
+
+        except Exception as e:
+            print(e)
+            return 'Ocurrio un error', 400
+        finally:
+            db.session.close()
+            pass
+
+class GetDataLeads(Resource):
+    def get(self,CampaingID,FechaInicio,FechaFin):
+        try:
+
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            date_time_Inicio = datetime.strptime(FechaInicio, '%Y-%m-%d')
+            date_time_Fin = datetime.strptime(FechaFin, '%Y-%m-%d')
+            campaings = []
+            report = LeadAdsCampaingsSchema()
+            report = LeadAdsCampaingsSchema(many=True)
+            query = db.session.query('id', 'CampaingID', 'Nombre', 'Telefono', 'Email', 'NIT', 'DPI', 'Plataforma', 'Ubicacion', 'Producto', 'EstadoDpi','EstadoTelefono', 'EstadoEmail','EstadoGeneral','CreateDate')
+            query = query.from_statement(text("""
+                    select idLeadAdsCampaings id, CampaingID, Nombre, Telefono, Email, NIT, DPI, Plataforma, Ubicacion, Producto, date_format(CreateDate,'%d/%m/%Y') CreateDate, 0 as EstadoDpi, 0 as EstadoTelefono, 0 as EstadoEmail, 0 as EstadoGeneral
+                    from LeadAdsCampaings
+                    where CampaingID='{}' and (`CreateDate` >= '{} and CreateDate <= {}') order by CreateDate desc;
+                    """.format(CampaingID,date_time_Inicio.date(),date_time_Fin.date())))
+            result = report.dump(query)
+            count = 0
+            for row in result:
+                DPI = row['DPI']
+                DPI = str(DPI).replace(" ", "")
+                DPI = str(DPI).replace("-", "")
+                row['DPI'] = DPI
+                if len(DPI) == 13:
+                    row['EstadoDpi'] = 1
+                Email = row['Email']
+                searchObj = re.search(r"""^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$""", Email, re.M | re.I)
+                if searchObj:
+                    row['EstadoEmail'] = 1
+                Number = str(row['Telefono'])
+                if len(Number) >= 8:
+                    row['EstadoTelefono'] = 1
+
+                if row['EstadoDpi'] < 1 or row['EstadoEmail'] < 1 or row['EstadoTelefono'] < 1:
+                    row['EstadoGeneral'] = 0
+                else:
+                    row['EstadoGeneral'] = 1
+                campaings.append(row)
+            campaings = jsonify(campaings)
+            return campaings
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetInvitados(Resource):
+    def get(self):
+        try:
+            lm = InvitadosSchema()
+            lm = InvitadosSchema(many=True)
+            data = db.session.query(Invitados.idUsuario.label('id'),Invitados.user.label('username'),Invitados.password,Invitados.user.label('firstName'),Invitados.user.label('lastName')).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+
+class GetDuplicateLeads(Resource):
+    def get(self,CampaingID,FechaInicio,FechaFin):
+        try:
+            date_time_Inicio = datetime.strptime(FechaInicio, '%Y-%m-%d')
+            date_time_Fin = datetime.strptime(FechaFin, '%Y-%m-%d')
+            report = LeadAdsCampaingsSchema()
+            report = LeadAdsCampaingsSchema(many=True)
+            query = db.session.query('id', 'CampaingID', 'Nombre', 'Telefono', 'Email', 'NIT', 'DPI', 'Plataforma', 'Ubicacion','Producto','CreateDate' , 'EstadoDpi','EstadoTelefono', 'EstadoEmail','EstadoGeneral')
+            query = query.from_statement(text("""
+                    select idLeadAdsCampaings id, CampaingID, Nombre, Telefono, Email, NIT, DPI, Plataforma, Ubicacion,Producto,date_format(CreateDate,'%d/%m/%Y') CreateDate, 0 as EstadoDpi, 0 as EstadoTelefono, 0 as EstadoEmail, 0 as EstadoGeneral
+                    from LeadAdsCampaings
+                    where CampaingID='{}' and (`CreateDate` >= '{} and CreateDate <= {}')
+                    GROUP BY DPI
+                    HAVING COUNT(DPI) > 1 order by CreateDate desc;
+                    """.format(CampaingID,date_time_Inicio.date(),date_time_Fin.date())))
+            result = report.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+### Mis Flows
+class MisFLowsAprobados(Resource):
+    def get(self,idmarca):
+        try:
+            if idmarca == '1':
+                json=[
+                    {
+                        'estado':0,
+                        'id':1,
+                        'nombre':'',
+                        'paisimplementar':''
+                    }
+                ]
+                return json
+            lm = models.mfccompradiaria()
+            lm = models.mfcSchema(many=True)
+            data = db.session.query(models.mfc.id,models.mfc.estado,models.mfc.nombre,
+            models.dpais.nombre.label('paisimplementar')).join(models.mfc,
+            models.mfc.paisimplementar == models.dpais.id).filter(
+                models.mfc.idmarca == idmarca).order_by(desc(func.ifnull(models.mfc.fechaing,models.mfc.fechamod))).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class MisCampanas(Resource):
+    def get(self,flowid):
+        try:
+            if flowid == '1':
+                json=[
+                    {
+                        "costo": 0,
+                        "costoplataforma": None,
+                        "fechafin": "2020-01-31",
+                        "fechainicio": "2020-01-01",
+                        "id": 1,
+                        "idversion": 1,
+                        "nombre": "",
+                        "nombreversion": ""
+                    }
+                ]
+                return json
+            lm = models.campanaSchema()
+            lm = models.campanaSchema(many=True)
+            query = db.session.query('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio', 'fechafin', 'costo', 'costoplataforma')
+            query = query.from_statement(text("""
+                  select c.id,c.idversion,c.nombre,c.nombreversion,c.fechainicio, c.fechafin , sum(distinct d.costo) costo,
+                    (
+                        select sum(da.Cost) from dailycampaing da
+                        inner join Campaings ca on ca.CampaingID = da.CampaingID
+                        inner join mfcgt.mfccompradiaria com on  ca.Campaingname = com.multiplestiposg
+                        inner join mfcgt.mfccampana m on m.id = com.idcampana
+                        where m.id = c.id
+                    ) costoplataforma
+                    from mfcgt.mfccampana c
+                    inner join mfcgt.mfccompradiaria d on d.idcampana = c.id
+                    where c.idmfc = {}
+                    group by c.id;
+                    """.format(flowid)))
+
+            result = lm.dump(query)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+
+class MisLineasImplementadas(Resource):
+    def get(self,campanaid):
+        try:
+            if campanaid == '1':
+                json=[
+                    {
+                        'estado':0,
+                        'id':1,
+                        'nombre':'',
+                        'paisimplementar':''
+                    }
+                ]
+                print(json)
+                return json
+            lm = models.compradiariaSchema()
+            lm = models.compradiariaSchema(many=True)
+            query = db.session.query('id', 'nombre', 'fecha_inicio_mfc', 'fecha_fin_mfc', 'fecha_inicio_pl','fecha_fin_pl','costo_mfc', 'costo_pl')
+            query = query.from_statement(text("""
+                  select cd.id, ca.Campaingname nombre, cd.multiplestiposa fecha_inicio_mfc,cd.multiplestiposb fecha_fin_mfc,
+                    date_format(ca.StartDate,'%m/%d/%Y') fecha_inicio_pl,date_format(ca.EndDate,'%m/%d/%Y') fecha_fin_pl ,
+                    cd.costo costo_mfc,sum(da.Cost) costo_pl  from mfcgt.mfccompradiaria cd
+                    inner join Campaings ca on ca.Campaingname = cd.multiplestiposg
+                    inner join dailycampaing da on ca.CampaingID = da.CampaingID
+                    where idcampana = {}
+                    group by da.CampaingID;
+
+                    """.format(campanaid)))
+            result = lm.dump(query)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
 
 
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
 ##
 
+#Bitacora
 api.add_resource(GetBitacora, '/task/Bitacora')
 api.add_resource(GetBitacoraFull, '/task/BitacoraFull')
 api.add_resource(GetBitacoraFiles, '/task/BitacoraNames')
+#Adminstracion
 api.add_resource(GetAccountxMarca, '/task/AccountxMarca/<string:idMarca>')
 api.add_resource(PostMarcaxAccount, '/task/InsertAccountxMarca/<string:idAccount>&<string:idMarca>&<string:Estado>&<string:User>')
 api.add_resource(GetAccount, '/task/AccountAll')
@@ -456,15 +1066,34 @@ api.add_resource(GetAccountNames, '/task/AccountNames')
 api.add_resource(GetDmarca, '/task/Marca')
 api.add_resource(GetDmarcaName, '/task/MarcaNames')
 api.add_resource(CRUDAccount, '/task/Account/<string:idAccount>&<string:Account>&<string:Medio>&<string:Country>')
-api.add_resource(LoginS, '/task/Token/<string:user>&<string:pas>')
+api.add_resource(GetCostCamp, '/task/Costo/<string:campaing>')
+#Token
+api.add_resource(GenToken, '/task/Token/<string:idusuario>')
+#Modulo de Errores GetCountsErrores
 api.add_resource(GetErrores, '/Errores/<string:idusuario>')
-api.add_resource(UploadImage, '/Upload/<string:fname>')
+api.add_resource(GetCountsErrores, '/Errores/Count/<string:idusuario>')
+api.add_resource(PostEstadoErrors, '/Errores/Omitir/<string:idError>&<string:idusuario>')
+
+#Modulo de Reportes
 api.add_resource(GetReporte, '/Reporte/<string:idusuario>')
+api.add_resource(GetReporteCliente, '/Reporte/Invitado/<string:idcliente>')
 api.add_resource(GetReporteML, '/Reporte/ArchivosLM/<string:idusuario>')
+api.add_resource(GetReporteMLID, '/Reporte/ArchivosLMEncabezado/<string:idlocal>')
 api.add_resource(GetReporteDetailML, '/Reporte/DetalleLM/<string:idlocal>')
 api.add_resource(GetGroupByODClML, '/Reporte/ODC')
 api.add_resource(GetReporteDetODC, '/Reporte/ODC/<string:Odc>')
-
+api.add_resource(GetCliente, '/Reporte/Cliente/<string:idusuario>')
+api.add_resource(GetClienteMarca, '/Reporte/ClienteMarca/<string:idcliente>')
+#LEAD CampaingID,Nombre,Telefono,NIT,DIP,Ubicacion,Plataforma,Email
+api.add_resource(PostDataLeads, '/webhoop/Leads/<string:CampaingID>&<string:Nombre>&<string:Telefono>&<string:NIT>&<string:DPI>&<string:Email>&<string:Ubicacion>&<string:Plataforma>&<string:Producto>')
+api.add_resource(GetDataLeads, '/webhoop/Leads/<string:CampaingID>&<string:FechaInicio>&<string:FechaFin>')
+api.add_resource(GetDuplicateLeads, '/webhoop/Leads/Duplicados/<string:CampaingID>&<string:FechaInicio>&<string:FechaFin>')
+api.add_resource(GetInvitados, '/Invitados')
+#Mis Flows
+api.add_resource(MisFLowsAprobados, '/Flows/<string:idmarca>')
+api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>')
+api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
+api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
 if __name__ == '__main__':
     JWTManager(app)
-    app.run(debug=False)
+    app.run(debug=True,port=5050)
