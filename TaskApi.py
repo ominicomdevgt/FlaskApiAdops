@@ -458,70 +458,70 @@ class GetReporte(Resource):
                     """.format(idusuario,hoy)))
             result = report.dump(query)
             for row in result:
-                        Nomenclatura = row['Campaingname']
-                        if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
-                            row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] ) * 1000
+                Nomenclatura = row['Campaingname']
+                if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
+                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] ) * 1000
+                else:
+                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] )
+                if Nomenclatura:
+                    if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
+                        Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
+                        End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                        row['TotalDias'] = End - Start
+                        row['DiasEjecutados'] = datetime.now() -  Start
+                        row['DiasPorservir'] = End - datetime.now()
+                        if row['TotalDias'].days > 0:
+                            porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
                         else:
-                            row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] )
-                        if Nomenclatura:
-                            if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
-                                Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
-                                End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
-                                row['TotalDias'] = End - Start
-                                row['DiasEjecutados'] = datetime.now() -  Start
-                                row['DiasPorservir'] = End - datetime.now()
-                                if row['TotalDias'].days > 0:
-                                    porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
-                                else:
-                                    porcentDay = 1
-                                row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
-                                if float( row['PresupuestoPlan']) > 0:
-                                    row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
-                                    row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
-                                    row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
-                                row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
-                                if float( row['KPIPlanificado']) > 0:
-                                    row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
-                                    row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
-                                    row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
-                                row['TotalDias'] = row['TotalDias'].days
-                                row['DiasEjecutados'] = row['DiasEjecutados'].days
-                                row['DiasPorservir'] = row['DiasPorservir'].days + 1
-                                if porcentDay <= 0.25:
-                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.15:
-                                        row['EstadoPresupuesto'] =  1
-                                    if abs(float(row['PorcentajeKPI'])) <= 0.15:
-                                        row['EstadoKPI'] =  1
-                                elif porcentDay > 0.25 and porcentDay <=0.50:
-                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.10:
-                                        row['EstadoPresupuesto'] =  1
-                                    if abs(float(row['PorcentajeKPI'])) <= 0.10:
-                                        row['EstadoKPI'] =  1
-                                elif porcentDay > 0.50 and porcentDay <=0.85:
-                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.05:
-                                        row['EstadoPresupuesto'] =  1
-                                    if abs(float(row['PorcentajeKPI'])) <= 0.05:
-                                        row['EstadoKPI'] =  1
-                                elif porcentDay > 0.85:
-                                    if abs(float(row['PorcentajePresupuesto'])) <= 0.01:
-                                        row['EstadoPresupuesto'] =  1
-                                    if abs(float(row['PorcentajeKPI'])) <= 0.01:
-                                        row['EstadoKPI'] =  1
-                                row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
-                                row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
-                                row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
-                                row['PorcentajeEsperadoK'] = row['PorcentajeEsperadoK'] * 100
-                                row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
-                                row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
-                                row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
-                                if row['PorcentajeEsperadoK'] > 0:
-                                    row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['PorcentajeEsperadoK'],2)
-                                if row['KPIConsumido'] > 0:
-                                    row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
-                                if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
-                                    row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
-                                    row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
-                                campaings.append(row)
+                            porcentDay = 1
+                        row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
+                        if float( row['PresupuestoPlan']) > 0:
+                            row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
+                            row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
+                            row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
+                        row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
+                        if float( row['KPIPlanificado']) > 0:
+                            row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
+                            row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
+                            row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
+                        row['TotalDias'] = row['TotalDias'].days
+                        row['DiasEjecutados'] = row['DiasEjecutados'].days
+                        row['DiasPorservir'] = row['DiasPorservir'].days + 1
+                        if porcentDay <= 0.25:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.15:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.15:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.25 and porcentDay <=0.50:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.10:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.10:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.50 and porcentDay <=0.85:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.05:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.05:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.85:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.01:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.01:
+                                row['EstadoKPI'] =  1
+                        row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
+                        row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
+                        row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
+                        row['PorcentajeEsperadoK'] = row['PorcentajeEsperadoK'] * 100
+                        row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
+                        row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
+                        row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
+                        if row['PorcentajeEsperadoK'] > 0:
+                            row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['PorcentajeEsperadoK'],2)
+                        if row['KPIConsumido'] > 0:
+                            row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
+                        if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
+                            row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
+                            row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                        campaings.append(row)
             campaings = jsonify(campaings)
             return campaings
 
