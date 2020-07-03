@@ -100,7 +100,7 @@ class GetAccountxMarca(Resource):
 
 
 class PostMarcaxAccount(Resource):
-     #@jwt_required idAccount
+     @jwt_required idAccount
      def post(self,idAccount,idMarca,Estado,User):
         busqueda = db.session.query(Accountxmarca.idAccountxMarca).filter(Accountxmarca.account == idAccount, Accountxmarca.marca==idMarca).first()
         try:
@@ -309,7 +309,7 @@ class GetErrores(Resource):
 
 class GetCountsErrores(Resource):
 
-    #@jwt_required
+    @jwt_required
     def get(self,idusuario):
         try:
             dmarcaSchema = ErrorsCampaingsCountSchema()
@@ -434,35 +434,41 @@ class GetReporte(Resource):
             report = ReportSchema(many=True)
             query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP')
             query = query.from_statement(text("""
-                    select  dc.nombre as Account, dc.id idcliente,m.id idmarca ,c.CampaingID CampaingID,  a.Media Media,  c.Campaingname Campaingname, round(sum(distinct d.Cost),2) as 'InversionConsumida',
-                    date_format(ifnull( c.StartDate,str_to_date(cd.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , m.nombre as Marca,
-                    date_format(ifnull( c.EndDate,str_to_date(cd.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , ifnull(cd.costo,ifnull(cd.multiplescostosb,cd.bonificacion))  PresupuestoPlan,cd.rating KPIPlanificado,
-                    ob.Nombre KPI,ob.abreviatura abr,ifnull(sum(distinct d.result),0) 'KPIConsumido',c.Campaignstatus State,m.nombre Marca ,dc.nombre Cliente,date_format(now(),'%M') mes,
-                    '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
-                    "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', cd.rating' CostoPorResultadoP'
-                    from dailycampaing d
-                    inner join Campaings c on c.CampaingID = d.CampaingID
-                    inner join Accounts a on c.AccountsID = a.AccountsID
-                    inner join accountxmarca am on am.account = a.AccountsID
-                    inner join mfcgt.mfcasignacion asg on asg.idmarca = am.marca
-                    inner join mfcgt.dmarca m on am.marca = m.id
-                    inner join mfcgt.dcliente dc on dc.id = m.idcliente
-                    inner join mfcgt.mfccompradiaria cd on c.Campaingname = cd.multiplestiposg
-                    inner join mfcgt.dformatodigital df on df.id = cd.idformatodigital
-					inner join mfcgt.danuncio da on da.id = df.idanuncio
-					inner join mfcgt.dmetrica me on me.id = da.idmetrica
-					inner join mfcgt.dobjetivo ob on ob.id = me.idobjetivo
-                    where c.Campaignstatus in ('ACTIVE','enabled')  and asg.idusuario = {}
-                    and date_format(str_to_date(cd.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
-                    group by d.CampaingID;
+                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,ACCOUNTS.Media Media, METRICAS.Campaingname Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
+                        date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
+                        date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
+                        ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
+                        '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                        "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
+
+                        from dailycampaing METRICAS
+                        INNER JOIN Campaings CAMPANAMP on CAMPANAMP.Campaingname =  METRICAS.Campaingname
+                        INNER JOIN Accounts ACCOUNTS on CAMPANAMP.AccountsID = ACCOUNTS.AccountsID
+                        left JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.CampaignIDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                        INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                        INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                        INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                        INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                        INNER JOIN mfcgt.mfcasignacion ASIGNACION on ASIGNACION.idmarca = MARCA.id 
+                        where 
+                        ASIGNACION.idusuario = {}
+                        AND date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
+                        group by METRICAS.CampaingID
+                        ;
                     """.format(idusuario,hoy)))
             result = report.dump(query)
             for row in result:
                 Nomenclatura = row['Campaingname']
                 if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
-                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] ) * 1000
+                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / float(row['KPIPlanificado']) ) * 1000
                 else:
-                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / row['KPIPlanificado'] )
+                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / float(row['KPIPlanificado']) )
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
@@ -533,7 +539,7 @@ class GetReporte(Resource):
 
 
 class GetReporteCliente(Resource):
-    #@jwt_required
+    @jwt_required
     def get(self,idcliente):
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
@@ -624,7 +630,7 @@ class GetReporteCliente(Resource):
 
 
 class GetResults_Campaings(Resource):
-    #@jwt_required
+    @jwt_required
     def get(self,idMarca):
         try:
             lm = Results_campaingsSchema()
