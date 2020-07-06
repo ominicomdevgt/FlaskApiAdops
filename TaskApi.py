@@ -100,7 +100,7 @@ class GetAccountxMarca(Resource):
 
 
 class PostMarcaxAccount(Resource):
-     @jwt_required idAccount
+     @jwt_required 
      def post(self,idAccount,idMarca,Estado,User):
         busqueda = db.session.query(Accountxmarca.idAccountxMarca).filter(Accountxmarca.account == idAccount, Accountxmarca.marca==idMarca).first()
         try:
@@ -438,7 +438,7 @@ class GetReporte(Resource):
                         date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
                         date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
                         ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
-                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 12),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
                         ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
                         '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
                         "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
@@ -635,7 +635,9 @@ class GetResults_Campaings(Resource):
         try:
             lm = Results_campaingsSchema()
             lm = Results_campaingsSchema(many=True)
-            data = db.session.query(Results_campaings.idResult,Results_campaings.Description,Results_campaings.Url,Results_campaings.Status,Results_campaings.idMarca).filter(Results_campaings.Status==1, Results_campaings.idMarca == idMarca).order_by(Results_campaings.Description).all()
+            data = db.session.query(Results_campaings.idResult,Results_campaings.Description, \
+            Results_campaings.Url,Results_campaings.Status,Results_campaings.idMarca) \
+            .filter(Results_campaings.Status==1, Results_campaings.idMarca == idMarca).order_by(Results_campaings.Description).all()
             result = lm.dump(data)
             result = jsonify(result)
             return result
