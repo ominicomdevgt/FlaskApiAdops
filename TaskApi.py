@@ -438,7 +438,7 @@ class GetReporte(Resource):
                         date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
                         date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
                         ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
-                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 12),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
                         ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
                         '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
                         "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
@@ -539,7 +539,7 @@ class GetReporte(Resource):
 
 
 class GetReporteCliente(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idcliente):
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
@@ -548,77 +548,102 @@ class GetReporteCliente(Resource):
             report = ReportSchema(many=True)
             query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP')
             query = query.from_statement(text("""
-                    select  dc.nombre as Account, dc.id idcliente,m.id idmarca ,c.CampaingID CampaingID,  a.Media Media,  c.Campaingname Campaingname, round(sum(distinct d.Cost),2) as 'InversionConsumida', date_format(c.StartDate, '%d/%m/%Y') StartDate , m.nombre as Marca,
-                    date_format(c.EndDate,'%d/%m/%Y') EndDate , SUBSTRING_INDEX(SUBSTRING_INDEX(c.Campaingname, '_', 11),'_',-1) as 'PresupuestoPlan',SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 13),'_',-1) KPIPlanificado,
-                    md.Nombre KPI,md.abr,ifnull(sum(distinct d.result),0) 'KPIConsumido',c.Campaignstatus State,m.nombre Marca ,dc.nombre Cliente,date_format(now(),'%M') mes,
-                    '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
-                    "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR',"0" as 'CostoPorResultadoP'
-                    from dailycampaing d
-                    inner join Campaings c on c.CampaingID = d.CampaingID
-                    inner join Accounts a on c.AccountsID = a.AccountsID
-                    inner join accountxmarca am on am.account = a.AccountsID
-                    inner join mfcgt.mfcasignacion asg on asg.idmarca = am.marca
-                    inner join mfcgt.dmarca m on am.marca = m.id
-                    inner join mfcgt.dcliente dc on dc.id = m.idcliente
-                    inner join modelocompra md on md.abr = SUBSTRING_INDEX (SUBSTRING_INDEX(c.Campaingname, '_', 14),'_',-1)
-                    where dc.id = {} and c.Campaignstatus in ('ACTIVE','enabled')
-                    group by d.CampaingID;
+                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,ACCOUNTS.Media Media, METRICAS.Campaingname Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
+                        date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
+                        date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
+                        ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
+                        '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                        "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
+
+                        from dailycampaing METRICAS
+                        INNER JOIN Campaings CAMPANAMP on CAMPANAMP.Campaingname =  METRICAS.Campaingname
+                        INNER JOIN Accounts ACCOUNTS on CAMPANAMP.AccountsID = ACCOUNTS.AccountsID
+                        left JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.CampaignIDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                        INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                        INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                        INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                        INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                        INNER JOIN mfcgt.mfcasignacion ASIGNACION on ASIGNACION.idmarca = MARCA.id 
+                        where 
+                        CLIENTE.id = {} AND CAMPANAMP.Campaignstatus in ('ACTIVE','enabled')
+                        group by METRICAS.CampaingID
+                        ;
 
                     """.format(idcliente)))
             result = report.dump(query)
 
             for row in result:
-                        Nomenclatura = row['Campaingname']
-                        searchObj = re.search(r'([0-9,.]+)_(GT|CAM|RD|US|SV|HN|NI|CR|PA|RD|PN|CHI|HUE|PR)_([a-zA-ZáéíóúÁÉÍÓÚÑñ\s0-9-/.+&]+)_([a-zA-Z0-9-/.+&]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ0-9-/.+&0-9]+)_([a-zA-Z-/.+]+)_([a-zA-ZáéíóúÁÉÍÓÚÑñ.+0-9]+)_(ENE|FEB|MAR|ABR|MAY|JUN|JUL|AGO|SEP|OCT|NOV|DIC)_(2019|19|20|2020)_([0-9,.]+)_(BA|AL|TR|TRRS|TRRRSS|IN|DES|RV|CO|MESAD|LE)_([0-9,.]+)_(CPM|CPMA|CPVi|CPC|CPI|CPD|CPV|CPCo|CPME|CPE|PF|RF|MC|CPCO|CPCO)_([0-9.,]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([a-zA-Z-/áéíóúÁÉÍÓÚÑñ+&0-9]+)_([0-9,.-]+)?(_B-)?(_)?([0-9.,]+)?(_S-)?(_)?([0-9.,]+)?(\(([0-9.)]+)\))?(/[0-9]+)', Nomenclatura, re.M | re.I)
-                        if searchObj:
-                            objcon = (searchObj.group(12))
-                            resultadoPlan = (searchObj.group(15))
-                            if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
-                                Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
-                                End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
-                                row['TotalDias'] = End - Start
-                                row['DiasEjecutados'] = datetime.strptime('2019-12-17', '%Y-%m-%d') -  Start
-                                row['DiasPorservir'] = End - datetime.strptime('2019-12-17', '%Y-%m-%d')
-                                if row['TotalDias'].days > 0:
-                                    porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
-                                row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
-                                if float( row['PresupuestoPlan']) > 0:
-                                    row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
-                                    row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
-                                    row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
-                                row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
-                                if float( row['KPIPlanificado']) > 0:
-                                    row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
-                                    row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
-                                    row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
-                                row['TotalDias'] = row['TotalDias'].days
-                                row['DiasEjecutados'] = row['DiasEjecutados'].days
-                                row['DiasPorservir'] = row['DiasPorservir'].days + 1
-
-                                if abs(float(row['PorcentajePresupuesto'])) <= 15:
-                                    row['EstadoPresupuesto'] =  1
-                                if abs(float(row['PorcentajeKPI'])) <= 15:
-                                    row['EstadoKPI'] =  1
-
-                                row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
-                                row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
-                                row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
-                                row['PorcentajeEsperadoK'] =  int(row['PorcentajeEsperadoK'] * 100)
-                                row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
-                                row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
-                                row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
-                                if row['KPIEsperado'] > 0:
-                                    row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['KPIEsperado'],2)
-                                if row['KPIConsumido'] > 0:
-                                    row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
-                                if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
-                                    row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
-                                    row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
-                                if str(objcon).upper() == 'MESAD':
-                                    row['KPI'] =  'Costo por Conversación'
-                                row['CostoPorResultadoP'] = float(resultadoPlan)
-                                campaings.append(row)
-
+                Nomenclatura = row['Campaingname']
+                if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
+                    row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ) * 1000,2)
+                else:
+                    row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ),2)
+                if Nomenclatura:
+                    if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
+                        Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
+                        End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                        row['TotalDias'] = End - Start
+                        row['DiasEjecutados'] = datetime.now() -  Start
+                        row['DiasPorservir'] = End - datetime.now()
+                        if row['TotalDias'].days > 0:
+                            porcentDay = row['DiasEjecutados'].days / ((row['TotalDias'].days)  )
+                        else:
+                            porcentDay = 1
+                        row['PresupuestoEsperado'] = round(float(row['PresupuestoPlan']) * porcentDay,2)
+                        if float( row['PresupuestoPlan']) > 0:
+                            row['PorcentajeEsperadoV'] = round(float( row['PresupuestoEsperado'])/ float( row['PresupuestoPlan']),2)
+                            row['PorcentajeRealV'] = round(float(row['InversionConsumida'])/ float(row['PresupuestoPlan']),2)
+                            row['PorcentajePresupuesto'] = round(float(row['PorcentajeRealV'] - 1),2)
+                        row['KPIEsperado'] = round(float(row['KPIPlanificado']) * porcentDay,2)
+                        if float( row['KPIPlanificado']) > 0:
+                            row['PorcentajeEsperadoK'] = round(float( row['KPIEsperado'])/ float( row['KPIPlanificado']),2)
+                            row['PorcentajeRealK'] = round(float(row['KPIConsumido'])/ float(row['KPIPlanificado']),2)
+                            row['PorcentajeKPI'] =round(float(row['PorcentajeRealK'] - 1),2)
+                        row['TotalDias'] = row['TotalDias'].days
+                        row['DiasEjecutados'] = row['DiasEjecutados'].days
+                        row['DiasPorservir'] = row['DiasPorservir'].days + 1
+                        if porcentDay <= 0.25:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.15:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.15:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.25 and porcentDay <=0.50:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.10:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.10:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.50 and porcentDay <=0.85:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.05:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.05:
+                                row['EstadoKPI'] =  1
+                        elif porcentDay > 0.85:
+                            if abs(float(row['PorcentajePresupuesto'])) <= 0.01:
+                                row['EstadoPresupuesto'] =  1
+                            if abs(float(row['PorcentajeKPI'])) <= 0.01:
+                                row['EstadoKPI'] =  1
+                        row['PorcentajeEsperadoV'] = round(float(row['PorcentajeEsperadoV'] * 100),0)
+                        row['PorcentajeRealV'] = round(float(row['PorcentajeRealV'] * 100),0)
+                        row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
+                        row['PorcentajeEsperadoK'] = float(row['PorcentajeEsperadoK']) * 100
+                        row['PorcentajeRealK'] = float(row['PorcentajeRealK']) * 100
+                        row['PorcentajeKPI'] = int(int(row['PorcentajeRealK']) - int(row['PorcentajeEsperadoK']))
+                        row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
+                        if int(row['PorcentajeEsperadoK']) > 0:
+                            row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['PorcentajeEsperadoK'],2)
+                        if row['KPIConsumido'] > 0:
+                            row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
+                        if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
+                            row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
+                            row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                        campaings.append(row)
+            
             campaings = jsonify(campaings)
             return campaings
 
@@ -630,7 +655,7 @@ class GetReporteCliente(Resource):
 
 
 class GetResults_Campaings(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idMarca):
         try:
             lm = Results_campaingsSchema()
