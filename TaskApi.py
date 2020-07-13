@@ -466,9 +466,13 @@ class GetReporte(Resource):
             for row in result:
                 Nomenclatura = row['Campaingname']
                 if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
-                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / float(row['KPIPlanificado']) ) * 1000
+                    row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ) * 1000,2)
+                    if row['KPIConsumido'] > 0:
+                        row['KPIConsumido'] = round((row['InversionConsumida'] / float(row['KPIConsumido']) ) * 1000,2)
                 else:
-                    row['KPIPlanificado'] = (row['PresupuestoPlan'] / float(row['KPIPlanificado']) )
+                    row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ),2)
+                    if row['KPIConsumido'] > 0:
+                        row['KPIConsumido'] = round((row['InversionConsumida'] / float(row['KPIConsumido']) ),2)
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
@@ -518,9 +522,9 @@ class GetReporte(Resource):
                         row['PorcentajePresupuesto'] = row['PorcentajePresupuesto'] * 100
                         row['PorcentajeEsperadoK'] = row['PorcentajeEsperadoK'] * 100
                         row['PorcentajeRealK'] = row['PorcentajeRealK'] * 100
-                        row['PorcentajeKPI'] = int(row['PorcentajeRealK'] - row['PorcentajeEsperadoK'])
+                        row['PorcentajeKPI'] = int( int(row['PorcentajeRealK']) - int(row['PorcentajeEsperadoK']))
                         row['PorcentajePresupuesto'] = int(  row['PorcentajeRealV'] - row['PorcentajeEsperadoV'])
-                        if row['PorcentajeEsperadoK'] > 0:
+                        if int(row['PorcentajeEsperadoK']) > 0:
                             row['CostoPorResultadoP'] = round(row['PresupuestoEsperado'] / row['PorcentajeEsperadoK'],2)
                         if row['KPIConsumido'] > 0:
                             row['CostoPorResultadoR'] =round( row['InversionConsumida'] / row['KPIConsumido'],2)
@@ -539,7 +543,7 @@ class GetReporte(Resource):
 
 
 class GetReporteCliente(Resource):
-    #@jwt_required
+    @jwt_required
     def get(self,idcliente):
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
@@ -582,8 +586,12 @@ class GetReporteCliente(Resource):
                 Nomenclatura = row['Campaingname']
                 if row['KPI'] == 'AWARENESS' or row['KPI'] == 'ALCANCE':
                     row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ) * 1000,2)
+                    if row['KPIConsumido'] > 0:
+                        row['KPIConsumido'] = round((row['InversionConsumida'] / float(row['KPIConsumido']) ) * 1000,2)
                 else:
                     row['KPIPlanificado'] = round((row['PresupuestoPlan'] / float(row['KPIPlanificado']) ),2)
+                    if row['KPIConsumido'] > 0:
+                        row['KPIConsumido'] = round((row['InversionConsumida'] / float(row['KPIConsumido']) ),2)
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
