@@ -4,7 +4,7 @@ import sys
 from flask import jsonify
 from app import app, db
 from flask_restful import reqparse, abort, Api, Resource
-from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion, aprobacionSchema,Results_campaings,Results_campaingsSchema
+from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema
 import models
 from flask_sqlalchemy import SQLAlchemy,time
 from flask_marshmallow import Marshmallow
@@ -17,6 +17,7 @@ from sqlalchemy.sql import func,text, desc
 import numpy as mp
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
 
+parser = reqparse.RequestParser()
 
 api = Api(app)
 
@@ -436,7 +437,7 @@ class GetReporte(Resource):
             query = query.from_statement(text("""
                     select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,ACCOUNTS.Media Media, METRICAS.Campaingname Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
                         date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
-                        date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d') EndDate , 
                         ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
                         SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
                         ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
@@ -476,7 +477,7 @@ class GetReporte(Resource):
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
-                        End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                        End = datetime.strptime(row['EndDate'], "%Y-%m-%d")
                         row['TotalDias'] = End - Start
                         row['DiasEjecutados'] = datetime.now() -  Start
                         row['DiasPorservir'] = End - datetime.now()
@@ -531,6 +532,8 @@ class GetReporte(Resource):
                         if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
                             row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
                             row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                        row['PorcentajeEsperadoK'] = round(float(row['PorcentajeEsperadoK']),2)
+                        row['PorcentajeRealK'] = round(float(row['PorcentajeRealK']),2)
                         campaings.append(row)
             campaings = jsonify(campaings)
             return campaings
@@ -554,7 +557,7 @@ class GetReporteCliente(Resource):
             query = query.from_statement(text("""
                     select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,ACCOUNTS.Media Media, METRICAS.Campaingname Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
                         date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
-                        date_format(ifnull( CAMPANAMP.EndDate,str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y')),'%d/%m/%Y') EndDate , 
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d') EndDate , 
                         ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
                         SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
                         ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
@@ -595,7 +598,7 @@ class GetReporteCliente(Resource):
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
-                        End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
+                        End = datetime.strptime(row['EndDate'], "%Y-%m-%d")
                         row['TotalDias'] = End - Start
                         row['DiasEjecutados'] = datetime.now() -  Start
                         row['DiasPorservir'] = End - datetime.now()
@@ -650,6 +653,8 @@ class GetReporteCliente(Resource):
                         if row['abr'] == 'CMP' or row['abr'] == 'CMPA':
                             row['CostoPorResultadoP'] = row['CostoPorResultadoP']*1000
                             row['CostoPorResultadoR'] = row['CostoPorResultadoR']*1000
+                        row['PorcentajeEsperadoK'] = round(float(row['PorcentajeEsperadoK']),2)
+                        row['PorcentajeRealK'] = round(float(row['PorcentajeRealK']),2)
                         campaings.append(row)
             
             campaings = jsonify(campaings)
@@ -1091,6 +1096,63 @@ class MisLineasImplementadas(Resource):
             print(datetime.now())
 
 
+
+class GetMetricsCampaing(Resource):
+    #@jwt_required
+    def get(self,IDMFC,Mes):
+        try:
+            camp_shema = rCampaingMetricsSchema()
+            camp_shema = rCampaingMetricsSchema(many=True)
+            camp = db.session.query(rCampaingMetrics.id, rCampaings.campaingname.label('Nomenclatura'), rCampaingMetrics.Cost, rCampaingMetrics.Frequency,
+            rCampaingMetrics.Reach, rCampaingMetrics.Postengagements, rCampaingMetrics.Impressions, rCampaingMetrics.Videowachesat75,rCampaingMetrics.Conversions,
+            rCampaingMetrics.AppInstalls,rCampaingMetrics.Result.label('KPI')).join().filter(
+             rCampaingMetrics.CampaignIDMFC == IDMFC, rCampaingMetrics.Week == Mes, rCampaingMetrics.CampaingID == rCampaings.campaingid).distinct(rCampaingMetrics.id).all()
+            result = camp_shema.dump(camp)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class UpdateMetricsCamps(Resource):
+    def put(self):
+        try:
+            json_data = request.get_json(force=True)
+            Cost = json_data['Cost']
+            Reach = json_data['Reach']
+            Postengagements = json_data['Postengagements']
+            AppInstalls = json_data['AppInstalls']
+            KPI = json_data['KPI']
+            Impressions = json_data['Impressions']
+            Frequency = json_data['Frequency']
+            Conversions = json_data['Conversions']
+            Videowachesat75 = json_data['Videowachesat75']
+            id = json_data['id']
+            user_mod = json_data['user']
+            Metric = rCampaingMetrics.query.filter(rCampaingMetrics.id==id).first()
+            Metric.Cost = Cost
+            Metric.Reach = Reach
+            Metric.Postengagements = Postengagements
+            Metric.AppInstalls = AppInstalls
+            Metric.Result = KPI
+            Metric.Impressions = Impressions
+            Metric.Frequency = Frequency
+            Metric.Conversions = Conversions
+            Metric.Videowachesat75 = Videowachesat75
+            Metric.UserMod = user_mod
+            Metric.UpdateDate = datetime.now()
+            db.session.commit()
+            return 'Account Ingresado Correctamente', 201
+        except Exception as e:
+            print(e)
+            return 'Account no Ingresada', 400
+        finally:
+            db.session.close()
+            print(datetime.now())
+        
+
+
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
 ##
@@ -1135,6 +1197,9 @@ api.add_resource(MisFLowsAprobados, '/Flows/<string:idmarca>')
 api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>')
 api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
 api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
+#Actualizacion Datos
+api.add_resource(GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
+api.add_resource(UpdateMetricsCamps, '/DatosReportes/')
 if __name__ == '__main__':
     JWTManager(app)
     app.run(debug=True,port=5050)

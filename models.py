@@ -480,3 +480,62 @@ class dpais(db.Model):
     usermod = db.Column(db.DateTime, nullable=False)
     fechamod = db.Column(db.String, nullable=False)
     estado = db.Column(db.Integer, nullable=False)
+
+
+class rCampaings(db.Model):
+    __table_args__ = {'schema': 'MediaPlatformsReports'}
+    __tablename__ = 'Campaings'
+    campaingid = db.Column(db.String, primary_key=True)
+    campaingname = db.Column(db.String, nullable=False)
+    campaignspendinglimit = db.Column(db.Float, nullable=False)
+    campaigndailybudget = db.Column(db.Float, nullable=False)
+    campaignlifetimebudget = db.Column(db.Float, nullable=False)
+    campaignobjective = db.Column(db.String, nullable=False)
+    campaignstatus = db.Column(db.String, nullable=False)
+    cost = db.Column(db.Float, nullable=False)
+    accountsid = db.Column(db.String, nullable=False)
+    createdate = db.Column(db.DateTime, nullable=False)
+    startdate = db.Column(db.DateTime, nullable=False)
+    enddate = db.Column(db.DateTime, nullable=False)
+
+
+class rCampaingsSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('campaingid', 'campaingname', 'campaignspendinglimit', 'campaigndailybudget', 'campaignlifetimebudget',
+                  'campaignobjective', 'campaignstatus', 'cost', 'accountsid', 'createdate', 'startdate', 'enddate')
+
+
+class rCampaingMetrics(db.Model):
+    __table_args__ = {'schema': 'MediaPlatformsReports'}
+    __tablename__ = 'CampaingMetrics'
+    id = db.Column(db.Integer, primary_key=True)  # Field name made lowercase.
+    Reach = db.Column(db.Integer)
+    Frequency = db.Column(db.Float)
+    Cost = db.Column(db.Float)
+    Clicks = db.Column(db.Integer)
+    Percentofbudgetused = db.Column(db.Float)
+    Impressions = db.Column(db.Integer)
+    #CampaingID = db.Column(db.String)
+    CampaingID = db.Column(db.String, db.ForeignKey(
+        'MediaPlatformsReports.Campaings.campaingid'), nullable=False)
+    CreateDate = db.Column(db.DateTime)
+    ReportType = db.Column(db.Integer)
+    Result = db.Column(db.Float)
+    Postengagements = db.Column(db.Float)
+    Estimatedadrecalllift = db.Column(db.Float)
+    Videowachesat75 = db.Column(db.Float)
+    ThruPlay = db.Column(db.Float)
+    Conversions = db.Column(db.Integer)
+    Objetive = db.Column(db.String)
+    CampaignIDMFC = db.Column(db.Integer)
+    AppInstalls = db.Column(db.Integer)
+    KPICost = db.Column(db.Float)
+    CloseData = db.Column(db.Integer)
+    Week = db.Column(db.Integer)
+    UserMod = db.Column(db.String)
+    UpdateDate = db.Column(db.DateTime)
+
+class rCampaingMetricsSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('id', 'Nomenclatura', 'Cost', 'Frequency', 'Reach', 'Postengagements', 'Impressions', 'Clicks', 'Videowachesat75'
+        , 'Conversions', 'AppInstalls', 'KPI')

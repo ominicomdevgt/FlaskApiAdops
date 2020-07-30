@@ -10,11 +10,12 @@ cors = CORS(app)
 app.config["SQLALCHEMY_DATABASE_URI"] ="mysql://omgdev:Sdev@2002!@3.95.117.169/MediaPlatforms"
 app.config['SQLALCHEMY_BINDS'] = {
     'users':    "mysql://omgdev:Sdev@2002!@3.95.117.169/MediaPlatforms",
-    'mfc':  "mysql://omgdev:Sdev@2002!@3.95.117.169/mfcgt"
+    'mfc':  "mysql://omgdev:Sdev@2002!@3.95.117.169/mfcgt",
+    'reports':  "mysql://omgdev:Sdev@2002!@3.95.117.169/MediaPlatformsReports"
 }
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['SQLALCHEMY_POOL_RECYCLE'] = 120
-app.config['SQLALCHEMY_POOL_TIMEOUT'] = 40
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 60
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 
 
