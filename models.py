@@ -537,5 +537,6 @@ class rCampaingMetrics(db.Model):
 
 class rCampaingMetricsSchema(ma.ModelSchema):
     class Meta:
-        fields = ('id', 'Nomenclatura', 'Cost', 'Frequency', 'Reach', 'Postengagements', 'Impressions', 'Clicks', 'Videowachesat75'
-        , 'Conversions', 'AppInstalls', 'KPI')
+        fields = ('Cliente','Marca', 'MFC', 'ID Campaña', 'Campaña', 'Fecha Inicio', 'Fecha Fin','Objetivo','ID Nomenclatura', 'Nomenclatura',
+            'Medio','Inversion Planificada', 'KPI Planificado', 'Costo','Alcance','Frecuencia','Impresiones','Clicks','Video 75', 'Conversiones',
+            'Descargas', 'KPI', 'id', 'Engagements')

@@ -16,6 +16,7 @@ import re
 from sqlalchemy.sql import func,text, desc
 import numpy as mp
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
+import Actualizacion_Datos, Mis_Flows
 
 parser = reqparse.RequestParser()
 
@@ -666,28 +667,6 @@ class GetReporteCliente(Resource):
             db.session.close()
             print(datetime.now())
 
-
-class GetResults_Campaings(Resource):
-    #@jwt_required
-    def get(self,idMarca):
-        try:
-            lm = Results_campaingsSchema()
-            lm = Results_campaingsSchema(many=True)
-            data = db.session.query(Results_campaings.idResult,Results_campaings.Description, \
-            Results_campaings.Url,Results_campaings.Status,Results_campaings.idMarca) \
-            .filter(Results_campaings.Status==1, Results_campaings.idMarca == idMarca).order_by(Results_campaings.Description).all()
-            result = lm.dump(data)
-            result = jsonify(result)
-            return result
-        except Exception as e:
-            print(e)
-        finally:
-            db.session.close()
-            print(datetime.now())
-
-
-
-
 class GetReporteML(Resource):
     @jwt_required
     def get(self,idusuario):
@@ -985,7 +964,6 @@ class GetDuplicateLeads(Resource):
             db.session.close()
             print(datetime.now())
 
-### Mis Flows
 class MisFLowsAprobados(Resource):
     def get(self,idmarca):
         try:
@@ -1096,63 +1074,24 @@ class MisLineasImplementadas(Resource):
             print(datetime.now())
 
 
-
-class GetMetricsCampaing(Resource):
+class GetResults_Campaings(Resource):
     #@jwt_required
-    def get(self,IDMFC,Mes):
+    def get(self,idMarca):
         try:
-            camp_shema = rCampaingMetricsSchema()
-            camp_shema = rCampaingMetricsSchema(many=True)
-            camp = db.session.query(rCampaingMetrics.id, rCampaings.campaingname.label('Nomenclatura'), rCampaingMetrics.Cost, rCampaingMetrics.Frequency,
-            rCampaingMetrics.Reach, rCampaingMetrics.Postengagements, rCampaingMetrics.Impressions, rCampaingMetrics.Videowachesat75,rCampaingMetrics.Conversions,
-            rCampaingMetrics.AppInstalls,rCampaingMetrics.Result.label('KPI')).join().filter(
-             rCampaingMetrics.CampaignIDMFC == IDMFC, rCampaingMetrics.Week == Mes, rCampaingMetrics.CampaingID == rCampaings.campaingid).distinct(rCampaingMetrics.id).all()
-            result = camp_shema.dump(camp)
+            lm = Results_campaingsSchema()
+            lm = Results_campaingsSchema(many=True)
+            data = db.session.query(Results_campaings.idResult,Results_campaings.Description, \
+            Results_campaings.Url,Results_campaings.Status,Results_campaings.idMarca) \
+            .filter(Results_campaings.Status==1, Results_campaings.idMarca == idMarca).order_by(Results_campaings.Description).all()
+            result = lm.dump(data)
+            result = jsonify(result)
             return result
         except Exception as e:
             print(e)
         finally:
             db.session.close()
-            print(datetime.now())
-
-class UpdateMetricsCamps(Resource):
-    def put(self):
-        try:
-            json_data = request.get_json(force=True)
-            Cost = json_data['Cost']
-            Reach = json_data['Reach']
-            Postengagements = json_data['Postengagements']
-            AppInstalls = json_data['AppInstalls']
-            KPI = json_data['KPI']
-            Impressions = json_data['Impressions']
-            Frequency = json_data['Frequency']
-            Conversions = json_data['Conversions']
-            Videowachesat75 = json_data['Videowachesat75']
-            id = json_data['id']
-            user_mod = json_data['user']
-            Metric = rCampaingMetrics.query.filter(rCampaingMetrics.id==id).first()
-            Metric.Cost = Cost
-            Metric.Reach = Reach
-            Metric.Postengagements = Postengagements
-            Metric.AppInstalls = AppInstalls
-            Metric.Result = KPI
-            Metric.Impressions = Impressions
-            Metric.Frequency = Frequency
-            Metric.Conversions = Conversions
-            Metric.Videowachesat75 = Videowachesat75
-            Metric.UserMod = user_mod
-            Metric.UpdateDate = datetime.now()
-            db.session.commit()
-            return 'Account Ingresado Correctamente', 201
-        except Exception as e:
-            print(e)
-            return 'Account no Ingresada', 400
-        finally:
-            db.session.close()
-            print(datetime.now())
-        
-
-
+            print(datetime.now())          
+### Mis Flows
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
 ##
@@ -1198,8 +1137,8 @@ api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>')
 api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
 api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
 #Actualizacion Datos
-api.add_resource(GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
-api.add_resource(UpdateMetricsCamps, '/DatosReportes/')
+api.add_resource(Actualizacion_Datos.GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
+api.add_resource(Actualizacion_Datos.UpdateMetricsCamps, '/DatosReportes/')
 if __name__ == '__main__':
     JWTManager(app)
     app.run(debug=True,port=5050)
