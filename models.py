@@ -381,7 +381,7 @@ class mfc(db.Model):
 
 class mfcSchema(ma.ModelSchema):
     class Meta:
-        fields = ('id', 'idversion', 'nombre',
+        fields = ('id', 'idversion', 'nombre','anioimplementacion',
                   'paisfacturar', 'paisimplementar', 'estado')
 
 

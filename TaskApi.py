@@ -16,7 +16,7 @@ import re
 from sqlalchemy.sql import func,text, desc
 import numpy as mp
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-import Actualizacion_Datos, Mis_Flows
+import Actualizacion_Datos
 
 parser = reqparse.RequestParser()
 
@@ -979,8 +979,8 @@ class MisFLowsAprobados(Resource):
                 return json
             lm = models.mfccompradiaria()
             lm = models.mfcSchema(many=True)
-            data = db.session.query(models.mfc.id,models.mfc.estado,models.mfc.nombre,
-            models.dpais.nombre.label('paisimplementar')).join(models.mfc,
+            data = db.session.query(models.mfc.id,models.mfc.estado,models.mfc.nombre,models.mfc.anioimplementacion,
+            models.dpais.nombre.label('paisimplementar'), models.mfc.paisfacturar, models.mfc.paisimplementar).join(models.mfc,
             models.mfc.paisimplementar == models.dpais.id).filter(
                 models.mfc.idmarca == idmarca).order_by(desc(func.ifnull(models.mfc.fechaing,models.mfc.fechamod))).all()
             result = lm.dump(data)
