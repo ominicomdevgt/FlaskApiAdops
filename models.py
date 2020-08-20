@@ -382,7 +382,7 @@ class mfc(db.Model):
 class mfcSchema(ma.ModelSchema):
     class Meta:
         fields = ('id', 'idversion', 'nombre','anioimplementacion',
-                  'paisfacturar', 'paisimplementar', 'estado')
+                  'paisfacturar', 'paisimplementar', 'estado', 'idflow')
 
 
 class mfccampana(db.Model):
@@ -409,7 +409,7 @@ class mfccampana(db.Model):
 
 class campanaSchema(ma.ModelSchema):
     class Meta:
-        fields = ('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio','costo',
+        fields = ('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio','costo','producto','descripcion',
                   'costoplataforma', 'fechafin', 'paisfacturar', 'paisimplementar', 'estado')
 
 
@@ -466,7 +466,7 @@ class mfccompradiaria(db.Model):
 class compradiariaSchema(ma.ModelSchema):
     class Meta:
         fields = ('id', 'nombre', 'fecha_inicio_mfc', 'fecha_fin_mfc', 'fecha_inicio_pl','fecha_fin_pl',
-                  'costo_mfc', 'costo_pl')
+                  'costo_mfc', 'costo_pl','Plataforma','Version','Objetivo','Medio','odc','Presupuesto')
 
 
 class dpais(db.Model):
@@ -540,3 +540,17 @@ class rCampaingMetricsSchema(ma.ModelSchema):
         fields = ('Cliente','Marca', 'MFC', 'ID Campaña', 'Campaña', 'Fecha Inicio', 'Fecha Fin','Objetivo','ID Nomenclatura', 'Nomenclatura',
             'Medio','Inversion Planificada', 'KPI Planificado', 'Costo','Alcance','Frecuencia','Impresiones','Clicks','Video 75', 'Conversiones',
             'Descargas', 'KPI', 'id', 'Engagements')
+
+
+class mfcasignacion(db.Model):
+    __table_args__ = {'schema': 'mfcgt'}
+    __tablename__ = 'mfcasignacion'
+    id = db.Column(db.Integer, primary_key=True)
+    idusuario = db.Column(db.Integer, nullable=False)
+    idmarca  = db.Column(db.Integer, nullable=False)
+    tipo  = db.Column(db.String, nullable=False)
+    usering  = db.Column(db.Integer, nullable=False)
+    fechaing  = db.Column(db.DateTime, nullable=False)
+    usermod  = db.Column(db.Integer, nullable=False)
+    fechamod  = db.Column(db.DateTime, nullable=False)
+    estado  = db.Column(db.Integer, nullable=False)
