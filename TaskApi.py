@@ -979,8 +979,8 @@ class MisFLowsAprobados(Resource):
                 return json
             lm = models.mfccompradiaria()
             lm = models.mfcSchema(many=True)
-            data = db.session.query(models.mfc.id,models.mfc.estado,models.mfc.nombre,
-            models.dpais.nombre.label('paisimplementar')).join(models.mfc,
+            data = db.session.query( func.concat(models.mfc.id, models.mfc.idversion).label('id'),models.mfc.id.label('idflow') ,models.mfc.estado,models.mfc.nombre,models.mfc.anioimplementacion,
+            models.dpais.nombre.label('paisimplementar'), models.mfc.paisfacturar, models.mfc.paisimplementar, models.mfc.idversion).join(models.mfc,
             models.mfc.paisimplementar == models.dpais.id).filter(
                 models.mfc.idmarca == idmarca).order_by(desc(func.ifnull(models.mfc.fechaing,models.mfc.fechamod))).all()
             result = lm.dump(data)
@@ -992,8 +992,37 @@ class MisFLowsAprobados(Resource):
             db.session.close()
             print(datetime.now())
 
+class MisFLowsAprobadosPorUsuario(Resource):
+    def get(self,idusuario):
+        try:
+            if idusuario == '1':
+                json=[
+                    {
+                        'estado':0,
+                        'id':1,
+                        'nombre':'',
+                        'paisimplementar':''
+                    }
+                ]
+                return json
+            lm = models.mfccompradiaria()
+            lm = models.mfcSchema(many=True)
+            data = db.session.query( func.concat(models.mfc.id, models.mfc.idversion).label('id'),models.mfc.id.label('idflow') ,models.mfc.estado,models.mfc.nombre,models.mfc.anioimplementacion,
+            models.dpais.nombre.label('paisimplementar'), models.mfc.paisfacturar, models.mfc.paisimplementar, models.mfc.idversion).join(
+                models.mfc,models.mfc.paisimplementar == models.dpais.id).join(
+                models.mfcasignacion,models.mfc.idmarca == models.mfcasignacion.idmarca
+                ).filter(
+                models.mfcasignacion.idusuario == idusuario,models.mfc.anioimplementacion==2020).order_by(desc(func.ifnull(models.mfc.fechaing,models.mfc.fechamod))).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
 class MisCampanas(Resource):
-    def get(self,flowid):
+    def get(self,flowid,versionid):
         try:
             if flowid == '1':
                 json=[
@@ -1011,9 +1040,9 @@ class MisCampanas(Resource):
                 return json
             lm = models.campanaSchema()
             lm = models.campanaSchema(many=True)
-            query = db.session.query('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio', 'fechafin', 'costo', 'costoplataforma')
+            query = db.session.query('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio', 'fechafin', 'costo', 'costoplataforma','producto','descripcion')
             query = query.from_statement(text("""
-                  select c.id,c.idversion,c.nombre,c.nombreversion,c.fechainicio, c.fechafin , sum(distinct d.costo) costo,
+                  select c.id,c.idversion,c.nombre,c.nombreversion,c.fechainicio, c.fechafin , sum(distinct d.costo) costo,product.nombre producto, c.descripcion,
                     (
                         select sum(da.Cost) from dailycampaing da
                         inner join Campaings ca on ca.CampaingID = da.CampaingID
@@ -1023,9 +1052,10 @@ class MisCampanas(Resource):
                     ) costoplataforma
                     from mfcgt.mfccampana c
                     inner join mfcgt.mfccompradiaria d on d.idcampana = c.id
-                    where c.idmfc = {}
+                    inner join mfcgt.dproducto product on product.id = c.idproducto
+                    where c.idmfc = {} and c.idversionmfc = {}
                     group by c.id;
-                    """.format(flowid)))
+                    """.format(flowid,versionid)))
 
             result = lm.dump(query)
             result = jsonify(result)
@@ -1053,16 +1083,23 @@ class MisLineasImplementadas(Resource):
                 return json
             lm = models.compradiariaSchema()
             lm = models.compradiariaSchema(many=True)
-            query = db.session.query('id', 'nombre', 'fecha_inicio_mfc', 'fecha_fin_mfc', 'fecha_inicio_pl','fecha_fin_pl','costo_mfc', 'costo_pl')
+            query = db.session.query('id', 'nombre', 'fecha_inicio_mfc', 'fecha_fin_mfc','costo_mfc', 'costo_pl','Plataforma','Version','Objetivo','Medio','odc','Presupuesto')
             query = query.from_statement(text("""
-                  select cd.id, ca.Campaingname nombre, cd.multiplestiposa fecha_inicio_mfc,cd.multiplestiposb fecha_fin_mfc,
-                    date_format(ca.StartDate,'%m/%d/%Y') fecha_inicio_pl,date_format(ca.EndDate,'%m/%d/%Y') fecha_fin_pl ,
-                    cd.costo costo_mfc,sum(da.Cost) costo_pl  from mfcgt.mfccompradiaria cd
-                    inner join Campaings ca on ca.Campaingname = cd.multiplestiposg
-                    inner join dailycampaing da on ca.CampaingID = da.CampaingID
+                  select cd.id, cd.multiplestiposg nombre, cd.multiplestiposa fecha_inicio_mfc,cd.multiplestiposb fecha_fin_mfc,
+                    cd.costo costo_mfc,sum(da.Cost) costo_pl,PLATAFORMA.nombre as Plataforma,cd.multiplestiposd as Version,
+					OBJETIVO.nombre as Objetivo, MEDIO.nombre Medio, cd.odc, cd.idpresupuesto Presupuesto
+                    from mfcgt.mfccompradiaria cd
+                    left join dailycampaing da on cd.id = da.CampaignIDMFC
+                    INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=cd.idformatodigital
+					INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+					INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+					INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+					INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma	
+					INNER JOIN mfcgt.dsubmedio as SUBMEDIO on SUBMEDIO.id=PLATAFORMA.idsubmedio
+					INNER JOIN mfcgt.dmedio as MEDIO on MEDIO.id=SUBMEDIO.idmedio
+					INNER JOIN mfcgt.dtipomedio as TIPOMEDIO on TIPOMEDIO.id=MEDIO.idtipomedio
                     where idcampana = {}
                     group by da.CampaingID;
-
                     """.format(campanaid)))
             result = lm.dump(query)
             result = jsonify(result)
@@ -1072,6 +1109,21 @@ class MisLineasImplementadas(Resource):
         finally:
             db.session.close()
             print(datetime.now())
+
+class PutLineaImplementacion(Resource):
+    def put(self,idLinea,ODC,Presupuesto):
+        try:
+            a = models.mfccompradiaria.query.filter(models.mfccompradiaria.id==idLinea).first()
+            a.odc = ODC
+            a.idpresupuesto = Presupuesto
+            db.session.commit()
+            return 'ODC y Presupuesto Actualizado exitosamente', 201
+        except Exception as e:
+            print(e)
+            return 'No se realizo la Actualizacion', 400
+        finally:
+            db.session.close()
+            
 
 
 class GetResults_Campaings(Resource):
@@ -1133,8 +1185,10 @@ api.add_resource(GetDuplicateLeads, '/webhoop/Leads/Duplicados/<string:CampaingI
 api.add_resource(GetInvitados, '/Invitados')
 #Mis Flows
 api.add_resource(MisFLowsAprobados, '/Flows/<string:idmarca>')
-api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>')
+api.add_resource(MisFLowsAprobadosPorUsuario, '/FlowsUsuario/<string:idusuario>')
+api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>&<string:versionid>')
 api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
+api.add_resource(PutLineaImplementacion, '/Flows/LineaImp/<string:idLinea>&<string:ODC>&<string:Presupuesto>')
 api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
 #Actualizacion Datos
 api.add_resource(Actualizacion_Datos.GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
