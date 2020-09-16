@@ -16,7 +16,7 @@ import re
 from sqlalchemy.sql import func,text, desc
 import numpy as mp
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-import Actualizacion_Datos, Mis_Flows
+import Actualizacion_Datos#, Mis_Flows
 
 parser = reqparse.RequestParser()
 
@@ -25,7 +25,7 @@ api = Api(app)
 
 
 class GetBitacora(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self):
         try:
             bitacora_shema = BitacoraSchema()

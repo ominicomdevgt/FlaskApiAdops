@@ -540,3 +540,35 @@ class rCampaingMetricsSchema(ma.ModelSchema):
         fields = ('Cliente','Marca', 'MFC', 'ID Campaña', 'Campaña', 'Fecha Inicio', 'Fecha Fin','Objetivo','ID Nomenclatura', 'Nomenclatura',
             'Medio','Inversion Planificada', 'KPI Planificado', 'Costo','Alcance','Frecuencia','Impresiones','Clicks','Video 75', 'Conversiones',
             'Descargas', 'KPI', 'id', 'Engagements')
+
+class LocalMediaReports(db.Model):
+    __table_args__ = {'schema': 'MediaPlatformsReports'}
+    __tablename__ = 'LocalMedia'
+    ID = db.Column(db.Integer, primary_key=True)
+    ADName = db.Column(db.String)
+    ReportDate = db.Column(db.DateTime)
+    UnitCost = db.Column(db.Float)
+    ODC = db.Column(db.String)
+    Orden = db.Column(db.String)
+    BudgetUsed = db.Column(db.Float)
+    Reach = db.Column(db.Integer)
+    Impressions = db.Column(db.Integer)
+    Clicks = db.Column(db.Integer)
+    Videowachesat75 = db.Column(db.Float)
+    Listens = db.Column(db.Float)
+    Conversions = db.Column(db.Integer)
+    CTR = db.Column(db.Float)
+    Landingpageviews = db.Column(db.Float)
+    UniqueViews = db.Column(db.Integer)
+    TimeOnPage = db.Column(db.Float)
+    TypePublication = db.Column(db.String)
+    Follows = db.Column(db.Integer)
+    Navigation = db.Column(db.Integer)
+
+class LocalMediaReportsSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('ID', 'ADName', 'ReportDate', 'UnitCost', 'ODC', 'Orden', 'BudgetUsed', 'Reach', 'Impressions',
+                'Clicks', 'Videowachesat75', 'Listens', 'Conversions', 'CTR', 'Landingpageviews', 'UniqueViews',
+                'TimeOnPage', 'TypePublication', 'Follows', 'Navigation')
+
+
