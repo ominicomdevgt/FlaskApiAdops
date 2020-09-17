@@ -577,6 +577,37 @@ class LocalMediaReports(db.Model):
     TypePublication = db.Column(db.String)
     Follows = db.Column(db.Integer)
     Navigation = db.Column(db.Integer)
+    CreatedDate = db.Column(db.TIMESTAMP)
+    CreatedUser = db.Column(db.Integer)
+    UpdatedDate = db.Column(db.TIMESTAMP)
+    UpdatedUser = db.Column(db.Integer)
+    State = db.Column(db.Integer)
+    def __init__(self, accounts, marcas, userings):
+        self.account = accounts
+        self.marca = marcas
+        self.usering = userings
+    def __init__(self, ADName, ReportDate, UnitCost,ODC,Orden,BudgetUsed,Reach,Impressions, Clicks, Videowachesat75,Listens, Conversions, CTR, Landingpageviews, UniqueViews,TimeOnPage,TypePublication, Follows, Navigation,CreatedUser):
+        self.ADName = ADName
+        self.ReportDate = ReportDate
+        self.UnitCost = UnitCost
+        self.ODC = ODC
+        self.Orden = Orden
+        self.BudgetUsed = BudgetUsed
+        self.Reach = Reach
+        self.Impressions = Impressions
+        self.Clicks = Clicks
+        self.Videowachesat75 = Videowachesat75
+        self.Listens = Listens
+        self.Conversions = Conversions
+        self.CTR = CTR
+        self.Landingpageviews = Landingpageviews
+        self.UniqueViews = UniqueViews
+        self.TimeOnPage = TimeOnPage
+        self.TypePublication = TypePublication
+        self.Follows = Follows
+        self.Navigation = Navigation
+        self.CreatedUser = CreatedUser
+        self.State = 1
 
 class LocalMediaReportsSchema(ma.ModelSchema):
     class Meta:

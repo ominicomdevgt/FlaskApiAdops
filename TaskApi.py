@@ -4,7 +4,7 @@ import sys
 from flask import jsonify
 from app import app, db
 from flask_restful import reqparse, abort, Api, Resource
-from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema
+from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema, LocalMedia, LocalMediaSchema,LocalMediaReports,LocalMediaReportsSchema
 import models
 from flask_sqlalchemy import SQLAlchemy,time
 from flask_marshmallow import Marshmallow
@@ -1142,7 +1142,59 @@ class GetResults_Campaings(Resource):
             print(e)
         finally:
             db.session.close()
-            print(datetime.now())          
+            print(datetime.now())   
+
+class GetLocalMedia(Resource):
+    def post(self):
+        try:
+            lm = LocalMediaSchema()
+            lm = LocalMediaSchema(many=True)
+            data = db.session.query(LocalMedia).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())     
+
+
+class PostLocalMedia(Resource):
+    def post(self):
+        try:
+            content = request.json
+            adname = content['ADName']
+            reportdate = content['ReportDate']
+            unicost = content['UnitCost']
+            odc = content['ODC']
+            orden = content['Orden']
+            budgetused = content['BudgetUsed']
+            reach = content['Reach']
+            impressions = content['Impressions']
+            clicks = content['Clicks']
+            videowachestat75 = content['Videowachesat75']
+            listens = content['Listens']
+            conversions = content['Conversions']
+            ctr = content['CTR']
+            landingpageviews = content['LandingPageViews']
+            uniqueviews = content['UniqueViews']
+            timeonpage = content['TimeOnPage']
+            typepublication = content['TypePublication']
+            follows = content['Follows']
+            navigation = content['Navigation']
+            createduser = content['CreatedUser']
+            
+            a = LocalMediaReports(adname,reportdate,unicost,odc,orden,budgetused,reach,impressions,clicks,
+            videowachestat75,listens,conversions,ctr,landingpageviews,uniqueviews,timeonpage,typepublication,follows,navigation,createduser)
+            db.session.add(a)
+            db.session.commit()
+            return 'Formulario ingresado correctamente',201
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())    
 ### Mis Flows
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
@@ -1190,6 +1242,7 @@ api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>&<string:versionid>
 api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
 api.add_resource(PutLineaImplementacion, '/Flows/LineaImp/<string:idLinea>&<string:ODC>&<string:Presupuesto>')
 api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
+api.add_resource(PostLocalMedia, '/Reports/LocalMedia/')
 #Actualizacion Datos
 api.add_resource(Actualizacion_Datos.GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
 api.add_resource(Actualizacion_Datos.UpdateMetricsCamps, '/DatosReportes/')
