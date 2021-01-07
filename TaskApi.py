@@ -4,7 +4,7 @@ import sys
 from flask import jsonify
 from app import app, db
 from flask_restful import reqparse, abort, Api, Resource
-from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema, LocalMedia, LocalMediaSchema,LocalMediaReports,LocalMediaReportsSchema
+from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema, LocalMedia, LocalMediaSchema,LocalMediaReports,LocalMediaReportsSchema,PuestosOmgGT,PuestosOmgGTSchema,LocalMediaReportsCountSchema,UsuarioOmgGT
 import models
 from flask_sqlalchemy import SQLAlchemy,time
 from flask_marshmallow import Marshmallow
@@ -547,7 +547,7 @@ class GetReporte(Resource):
 
 
 class GetReporteCliente(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idcliente):
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
@@ -1127,7 +1127,7 @@ class PutLineaImplementacion(Resource):
 
 
 class GetResults_Campaings(Resource):
-    #@jwt_required
+    @jwt_required
     def get(self,idMarca):
         try:
             lm = Results_campaingsSchema()
@@ -1145,10 +1145,11 @@ class GetResults_Campaings(Resource):
             print(datetime.now())   
 
 class GetLocalMedia(Resource):
-    def post(self):
+    @jwt_required
+    def get(self):
         try:
-            lm = LocalMediaSchema()
-            lm = LocalMediaSchema(many=True)
+            lm = LocalMediaReportsSchema()
+            lm = LocalMediaReportsSchema(many=True)
             data = db.session.query(LocalMedia).all()
             result = lm.dump(data)
             result = jsonify(result)
@@ -1161,46 +1162,242 @@ class GetLocalMedia(Resource):
 
 
 class PostLocalMedia(Resource):
-    def post(self):
+    @jwt_required
+    def post(self,usuario_id):
         try:
             content = request.json
-            adname = content['ADName']
-            reportdate = content['ReportDate']
-            unicost = content['UnitCost']
-            odc = content['ODC']
-            orden = content['Orden']
-            budgetused = content['BudgetUsed']
-            reach = content['Reach']
-            impressions = content['Impressions']
-            clicks = content['Clicks']
-            videowachestat75 = content['Videowachesat75']
-            listens = content['Listens']
-            conversions = content['Conversions']
-            ctr = content['CTR']
-            landingpageviews = content['LandingPageViews']
-            uniqueviews = content['UniqueViews']
-            timeonpage = content['TimeOnPage']
-            typepublication = content['TypePublication']
-            follows = content['Follows']
-            navigation = content['Navigation']
-            createduser = content['CreatedUser']
-            
-            a = LocalMediaReports(adname,reportdate,unicost,odc,orden,budgetused,reach,impressions,clicks,
-            videowachestat75,listens,conversions,ctr,landingpageviews,uniqueviews,timeonpage,typepublication,follows,navigation,createduser)
-            db.session.add(a)
+            for result in content:
+                if result == '0':
+                    continue
+                else:
+                    idmfc = content[result][0]
+                    odc = content[result][1]
+                    orden = content[result][2]
+                    reportdate = content[result][3]
+                    adname = str(content[result][4])
+                    unicost = content[result][5]                    
+                    impressions = content[result][6]
+                    clicks = content[result][7]
+                    reach = content[result][8]
+                    videowachestat75 = content[result][9]
+                    listens = content[result][10]
+                    conversions = content[result][11]
+                    ctr = content[result][12]
+                    landingpageviews = content[result][13]
+                    uniqueviews = content[result][14]
+                    timeonpage = content[result][15]
+                    follows = content[result][16]
+                    navigation = content[result][17]
+                    createduser =  int(usuario_id)
+
+                    a = LocalMediaReports(adname,idmfc,reportdate,unicost,odc,orden,None,reach,impressions,clicks,
+                    videowachestat75,listens,conversions,ctr,landingpageviews,uniqueviews,timeonpage,None,follows,navigation,createduser)
+                    db.session.add(a)
             db.session.commit()
             return 'Formulario ingresado correctamente',201
         except Exception as e:
             print(e)
         finally:
             db.session.close()
-            print(datetime.now())    
+    def put(self):
+        try:
+            content = request.json
+            id = content['id']
+            a = LocalMediaReports.query.filter(LocalMediaReports.ID==id).first()
+            a.ADName = content['ADName']
+            a.ReportDate = content['ReportDate']
+            a.UniCost = content['UnitCost']
+            a.ODC = content['ODC']
+            a.Orden = content['Orden']
+            a.BudgetUsed = content['BudgetUsed']
+            a.Reach = content['Reach']
+            a.Impressions = content['Impressions']
+            a.Clicks = content['Clicks']
+            a.Videowachestat75 = content['Videowachesat75']
+            a.Listens = content['Listens']
+            a.Conversions = content['Conversions']
+            a.CTR = content['CTR']
+            a.Landingpageviews = content['Landingpageviews']
+            a.Uniqueviews = content['UniqueViews']
+            a.TimeOnPage = content['TimeOnPage']
+            a.TypePublication = content['TypePublication']
+            a.Follows = content['Follows']
+            a.Navigation = content['Navigation']
+            
+            a.UpdatedUser = content['CreatedUser']
+            db.session.commit()
+            return 'Medio local actualizado correctamente Correctamente', 201
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetLocalMedia(Resource):
+    @jwt_required
+    def get(self,id):
+        try:
+            content = request.json
+            lm = LocalMediaReportsSchema()
+            lm = LocalMediaReportsSchema(many=True)
+            data = db.session.query(LocalMediaReports).filter(LocalMediaReports.ID==id).all()
+            result = lm.dump(data)
+            result = jsonify(result)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close() 
+class CambioLocalMedia(Resource):
+    @jwt_required
+    def post(self,id,estado,idusuario):
+        try:
+            
+            a = models.LocalMediaReports.query.filter(models.LocalMediaReports.ID==id).first()
+            a.State = estado
+            a.UpdatedUser = idusuario
+            if estado == '3':
+                content = request.json
+                a.Description = content['Description']
+            db.session.commit()
+            return 'Medio local actualizado correctamente Correctamente', 201
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetLocalMediaxMarca(Resource):
+    @jwt_required
+    def get(self,idmarca):
+        try:
+            cshema = LocalMediaReportsSchema()
+            cshema = LocalMediaReportsSchema(many=True)
+            
+            query = db.session.query('ID','Nombre Anuncio','Orden','ReportDate','Nombre Campaña','UnitCost','State')
+            query = query.from_statement(text("""
+            select distinct LOCALM.ID, LOCALM.ADName 'Nombre Anuncio',CAMPANA.nombre 'Nombre Campaña' ,
+            LOCALM.Orden,date_format(LOCALM.ReportDate,'%M-%d') ReportDate,LOCALM.ADName,LOCALM.UnitCost,LOCALM.State 
+            from MediaPlatformsReports.LocalMedia LOCALM
+            inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+            INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+            INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+            INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+            WHERE MARCA.id = {};
+            """.format(idmarca)))
+            result = cshema.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetLocalMediaxUsuario(Resource):
+    @jwt_required
+    def get(self,idusuario):
+        try:
+            cshema = LocalMediaReportsSchema()
+            cshema = LocalMediaReportsSchema(many=True)
+            
+            query = db.session.query('ID','Nombre Anuncio','Orden','ReportDate','Nombre Campaña','UnitCost','State')
+            query = query.from_statement(text("""
+            select distinct LOCALM.ID, LOCALM.ADName 'Nombre Anuncio',CAMPANA.nombre 'Nombre Campaña' ,
+            LOCALM.Orden,date_format(LOCALM.ReportDate,'%M-%d') ReportDate,LOCALM.ADName,LOCALM.UnitCost,LOCALM.State 
+            from MediaPlatformsReports.LocalMedia LOCALM
+            inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+            INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+            INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+            INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+            INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+            WHERE ASIGNACION.idusuario = {}
+             order by CreatedDate desc
+            limit 10;
+            """.format(idusuario)))
+            result = cshema.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())
+
+class GetLocalMediaCount(Resource):
+    @jwt_required
+    def get(self,idusuario):
+        try:
+            cshema = LocalMediaReportsCountSchema()
+            cshema = LocalMediaReportsCountSchema(many=True)
+            
+            query = db.session.query('Por Revisar','Aprobados','Rechazados')
+            query = query.from_statement(text("""
+            select 
+                (select distinct count(LOCALM.ID) 
+                        from MediaPlatformsReports.LocalMedia LOCALM
+                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+                        WHERE ASIGNACION.idusuario = {} and State = 1
+                    ) as 'Por Revisar',
+                (select distinct count(LOCALM.ID) 
+                        from MediaPlatformsReports.LocalMedia LOCALM
+                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+                        WHERE ASIGNACION.idusuario = {} and State = 2
+                    ) as 'Aprobados',
+                    (select distinct count(LOCALM.ID) 
+                        from MediaPlatformsReports.LocalMedia LOCALM
+                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+                        WHERE ASIGNACION.idusuario = {} and State = 3
+                    ) as 'Rechazados'
+            from MediaPlatformsReports.LocalMedia LOCALM limit 1;
+            """.format(idusuario,idusuario,idusuario)))
+            result = cshema.dump(query)
+            return result
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close()
+            print(datetime.now())              
+
+class GetPuesto(Resource):
+    @jwt_required
+    def get(self,idusuario):
+        try:
+            user = UsuarioOmgGT.query.filter(UsuarioOmgGT.id==idusuario).first()
+            if user.idpuesto == 1029:
+                return False
+            else:
+                return True
+        except Exception as e:
+            print(e)
+        finally:
+            db.session.close() 
+
+class PostCSV(Resource):
+    def post(self):
+        if 'file' not in request.files:
+            return 'No esta el archvio Archvio',500
+        else:
+            data = request.files['errores.csv']
+        print('hola')
+        return 'Archvio',201
 ### Mis Flows
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
 ##
 
 #Bitacora
+api.add_resource(PostCSV, '/archvio')
 api.add_resource(GetBitacora, '/task/Bitacora')
 api.add_resource(GetBitacoraFull, '/task/BitacoraFull')
 api.add_resource(GetBitacoraFiles, '/task/BitacoraNames')
@@ -1242,7 +1439,13 @@ api.add_resource(MisCampanas, '/Flows/Campana/<string:flowid>&<string:versionid>
 api.add_resource(MisLineasImplementadas, '/Flows/LineaImp/<string:campanaid>')
 api.add_resource(PutLineaImplementacion, '/Flows/LineaImp/<string:idLinea>&<string:ODC>&<string:Presupuesto>')
 api.add_resource(GetResults_Campaings, '/Reports/<string:idMarca>')
-api.add_resource(PostLocalMedia, '/Reports/LocalMedia/')
+api.add_resource(PostLocalMedia, '/Reports/LocalMedia/<string:usuario_id>')
+api.add_resource(GetLocalMedia, '/Reports/LocalMedia/<string:id>')
+api.add_resource(GetPuesto, '/Reports/TipoUsuario/<string:idusuario>')
+api.add_resource(GetLocalMediaxMarca, '/Reports/LocalMediaxMarca/<string:idmarca>')
+api.add_resource(GetLocalMediaxUsuario, '/Reports/LocalMediaxUsuario/<string:idusuario>')
+api.add_resource(GetLocalMediaCount, '/Reports/LocalMediaCount/<string:idusuario>')
+api.add_resource(CambioLocalMedia, '/Reports/LocalMediaState/<string:id>&<string:estado>&<string:idusuario>')
 #Actualizacion Datos
 api.add_resource(Actualizacion_Datos.GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
 api.add_resource(Actualizacion_Datos.UpdateMetricsCamps, '/DatosReportes/')

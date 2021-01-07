@@ -558,6 +558,7 @@ class LocalMediaReports(db.Model):
     __table_args__ = {'schema': 'MediaPlatformsReports'}
     __tablename__ = 'LocalMedia'
     ID = db.Column(db.Integer, primary_key=True)
+    IDMFC = db.Column(db.Integer)
     ADName = db.Column(db.String)
     ReportDate = db.Column(db.DateTime)
     UnitCost = db.Column(db.Float)
@@ -577,17 +578,16 @@ class LocalMediaReports(db.Model):
     TypePublication = db.Column(db.String)
     Follows = db.Column(db.Integer)
     Navigation = db.Column(db.Integer)
+    Description = db.Column(db.String)
     CreatedDate = db.Column(db.TIMESTAMP)
     CreatedUser = db.Column(db.Integer)
     UpdatedDate = db.Column(db.TIMESTAMP)
     UpdatedUser = db.Column(db.Integer)
     State = db.Column(db.Integer)
-    def __init__(self, accounts, marcas, userings):
-        self.account = accounts
-        self.marca = marcas
-        self.usering = userings
-    def __init__(self, ADName, ReportDate, UnitCost,ODC,Orden,BudgetUsed,Reach,Impressions, Clicks, Videowachesat75,Listens, Conversions, CTR, Landingpageviews, UniqueViews,TimeOnPage,TypePublication, Follows, Navigation,CreatedUser):
+    def __init__(self, ADName,IDMFC, ReportDate, UnitCost,ODC,Orden,BudgetUsed,Reach,Impressions, Clicks,
+     Videowachesat75,Listens, Conversions, CTR, Landingpageviews, UniqueViews,TimeOnPage,TypePublication, Follows, Navigation,CreatedUser):
         self.ADName = ADName
+        self.IDMFC = IDMFC
         self.ReportDate = ReportDate
         self.UnitCost = UnitCost
         self.ODC = ODC
@@ -611,6 +611,53 @@ class LocalMediaReports(db.Model):
 
 class LocalMediaReportsSchema(ma.ModelSchema):
     class Meta:
-        fields = ('ID', 'ADName', 'ReportDate', 'UnitCost', 'ODC', 'Orden', 'BudgetUsed', 'Reach', 'Impressions',
-                'Clicks', 'Videowachesat75', 'Listens', 'Conversions', 'CTR', 'Landingpageviews', 'UniqueViews',
-                'TimeOnPage', 'TypePublication', 'Follows', 'Navigation')
+        fields = ('ID','IDMFC', 'ADName', 'ReportDate', 'UnitCost', 'ODC', 'Orden', 'BudgetUsed', 'Reach', 'Impressions',
+                'Clicks', 'Videowachesat75', 'Listens', 'Conversions', 'CTR', 'Landingpageviews', 'UniqueViews','Description',
+                'TimeOnPage', 'TypePublication', 'Follows', 'Navigation','State','Nombre Anuncio','Nombre Campaña')
+
+class LocalMediaReportsCountSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('Por Revisar','Aprobados','Rechazados')
+
+
+class PuestosOmgGT(db.Model):
+    __table_args__ = {'schema': 'omggt'}
+    __tablename__ = 'puesto'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String)
+    area = db.Column(db.String)
+    subarea = db.Column(db.String)
+    usermod = db.Column(db.Integer)
+    fechamod = db.Column(db.DateTime)
+    usering = db.Column(db.Integer)
+    fechaing = db.Column(db.DateTime)
+    estado = db.Column(db.Integer)
+class PuestosOmgGTSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('id', 'nombre','area','subarea','usermod','fechamod','usering','fechaing','estado')
+
+
+class UsuarioOmgGT(db.Model):
+    __table_args__ = {'schema': 'omggt'}
+    __tablename__ = 'usuario'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String)
+    clave = db.Column(db.String)
+    nombre = db.Column(db.String)
+    apellido = db.Column(db.Integer)
+    asignadoa = db.Column(db.Integer)
+    idagencia = db.Column(db.Integer)
+    rutaimagen = db.Column(db.String)
+    pinpublico = db.Column(db.Integer)
+    ultimolog = db.Column(db.DateTime)
+    idpuesto = db.Column(db.Integer)
+    idperfil = db.Column(db.Integer)
+    usermod = db.Column(db.Integer)
+    fechamod = db.Column(db.DateTime)
+    usering = db.Column(db.Integer)
+    fechaing = db.Column(db.DateTime)
+    estado = db.Column(db.Integer)
+class UsuarioOmgGTSchema(ma.ModelSchema):
+    class Meta:
+        fields = ('id', 'nombre','area','subarea','usermod','fechamod','usering','fechaing','estado')
+
