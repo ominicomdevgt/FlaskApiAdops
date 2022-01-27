@@ -11,7 +11,7 @@ class Bitacora(db.Model):
 
 
 
-class BitacoraSchema(ma.ModelSchema):
+class BitacoraSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('bitacoraID', 'Operacion',
                   'Resultado', 'Documento', 'CreateDate')
@@ -34,7 +34,7 @@ class Accounts(db.Model):
         self.Country = Country
 
 
-class AccountsSchema(ma.ModelSchema):
+class AccountsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('AccountsID', 'Account', 'Media', 'CreateDate', 'Country')
 
@@ -57,7 +57,7 @@ class Dcliente(db.Model):
     estado = db.Column(db.Integer)
 
 
-class DclienteSchema(ma.ModelSchema):
+class DclienteSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'nombre', 'usering')
 
@@ -80,7 +80,7 @@ class Dmarca(db.Model):
         return self.nombre + " - " + nombre
 
 
-class DmarcaSchema(ma.ModelSchema):
+class DmarcaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         nombre = Dmarca.nombre + Dcliente.nombre
         fields = ("id", "fullname", "usering", "abreviatura")
@@ -113,7 +113,7 @@ class Accountxmarca(db.Model):
 
 
 
-class AccountxMarcaSchema(ma.ModelSchema):
+class AccountxMarcaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('idAccountxMarca', 'AccountID', 'Medio', 'marca', 'nombre')
 
@@ -136,13 +136,13 @@ class Errorscampaings(db.Model):
         self.estado = Estado
 
 
-class ErrorsCampaingsSchema(ma.ModelSchema):
+class ErrorsCampaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        fields = ('iderror', 'idcuenta', 'cuenta', 'CampaingID', 'Camapingname', 'Error', 'TipoErrorID', 'DescripcionError',
-                  'GrupoError', 'Icono', 'Comentario', 'Estado', 'Media', 'Fecha', 'tipousuario', 'plataforma', 'marca', 'cliente')
+        fields = ('iderror', 'idcuenta', 'cuenta', 'CampaingID', 'Campaingname', 'Error', 'TipoErrorID', 'DescripcionError',
+                  'GrupoError', 'Icono', 'Comentario', 'Estado', 'Media', 'Fecha', 'tipousuario', 'plataforma', 'marca', 'cliente','id_marca','id_cliente', 'FechaError')
 
 
-class ErrorsCampaingsCountSchema(ma.ModelSchema):
+class ErrorsCampaingsCountSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('totales', 'totalinversion', 'totalnomeclatura',
                   'totalpaises', 'ordenesdecompra', 'errorconsumo')
@@ -157,7 +157,7 @@ class Tiposerrores(db.Model):
     createdate = db.Column(db.DateTime, nullable=False)
 
 
-class TipoErroresSchema(ma.ModelSchema):
+class TipoErroresSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('tipoerrorid', 'descripcion', 'icono', 'tipousuario')
 
@@ -179,7 +179,7 @@ class Campaings(db.Model):
     enddate = db.Column(db.DateTime, nullable=False)
 
 
-class CampaingsSchema(ma.ModelSchema):
+class CampaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('campaingid', 'campaingname', 'campaignspendinglimit', 'campaigndailybudget', 'campaignlifetimebudget',
                   'campaignobjective', 'campaignstatus', 'cost', 'accountsid', 'createdate', 'startdate', 'enddate')
@@ -194,21 +194,22 @@ class CampaingsAM(db.Model):
         'Accounts.AccountsID'), nullable=False)
 
 
-class CampaingsSchema(ma.ModelSchema):
+class CampaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('campaingid', 'campaingname', 'campaignspendinglimit', 'campaigndailybudget', 'campaignlifetimebudget',
                   'campaignobjective', 'campaignstatus', 'cost', 'accountsid', 'createdate', 'startdate', 'enddate')
 
 
-class CostSchema(ma.ModelSchema):
+class CostSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'cost')
 
 
-class ReportSchema(ma.ModelSchema):
+class ReportSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('Account', 'idcliente', 'CampaingID', 'Marca', 'idmarca', 'Media', 'Campaingname', 'InversionConsumida', 'KPIPlanificado', 'StartDate',  'EndDate', 'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido', 'State', 'TotalDias', 'DiasEjecutados', 'DiasPorservir',
-                  'PresupuestoEsperado', 'PorcentajePresupuesto', 'PorcentajeEsperadoV', 'PorcentajeRealV', 'KPIEsperado', 'PorcentajeKPI', 'PorcentajeEsperadoK', 'PorcentajeRealK', 'EstadoKPI', 'EstadoPresupuesto', 'abr', 'CostoPorResultadoR', 'CostoPorResultadoP')
+                  'PresupuestoEsperado', 'PorcentajePresupuesto', 'PorcentajeEsperadoV', 'PorcentajeRealV', 'KPIEsperado', 'PorcentajeKPI', 'PorcentajeEsperadoK', 'PorcentajeRealK', 'EstadoKPI', 'EstadoPresupuesto', 'abr', 'CostoPorResultadoR', 'CostoPorResultadoP','Campana','Version',
+                  'NombreMetrica','MetricaPlanificada','MetricaConsumida')
 
 
 class LocalMedia(db.Model):
@@ -227,7 +228,7 @@ class LocalMedia(db.Model):
     State = db.Column(db.String, nullable=False)
 
 
-class LocalMediaSchema(ma.ModelSchema):
+class LocalMediaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('LocalMediaID', 'Medio', 'Cliente', 'Pais',
                   'Campana', 'StartDate', 'EndDate', 'Mes', 'ODC', 'State')
@@ -249,7 +250,7 @@ class DetailLocalMedia(db.Model):
     Consumo = db.Column(db.Float, nullable=False)
 
 
-class DetailLocalMediaSchema(ma.ModelSchema):
+class DetailLocalMediaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('detailID', 'StartWeek', 'EndWeek', 'Nomenclatura',
                   'Formato', 'Objetivo', 'Impresiones', 'Clicks', 'Ctr', 'Consumo')
@@ -274,7 +275,7 @@ class Results_campaings(db.Model):
         self.idMarca = idMarca
 
 
-class Results_campaingsSchema(ma.ModelSchema):
+class Results_campaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('idResult', 'Url', 'CampaingID', 'Status','Description', 'idMarca')
 
@@ -307,7 +308,7 @@ class LeadAdsCampaings(db.Model):
         self.Plataforma = Plataforma
         self.Producto = Producto
 
-class LeadAdsCampaingsSchema(ma.ModelSchema):
+class LeadAdsCampaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'CampaingID', 'Nombre', 'Telefono', 'Email', 'NIT', 'DPI', 'Plataforma', 'Ubicacion', 'Producto','CreateDate', 'EstadoDpi', 'EstadoTelefono', 'EstadoEmail', 'EstadoGeneral')
 
@@ -323,7 +324,7 @@ class Invitados(db.Model):
     idcliente = db.Column(db.Integer, nullable=False)
 
 
-class InvitadosSchema(ma.ModelSchema):
+class InvitadosSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'username', 'password', 'firstName', 'lastName')
 
@@ -349,7 +350,7 @@ class mfcaprobacion(db.Model):
     fechamod = db.Column(db.String, nullable=False)
 
 
-class aprobacionSchema(ma.ModelSchema):
+class aprobacionSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'idmfc', 'datos', 'estado','nombre')
 
@@ -379,7 +380,7 @@ class mfc(db.Model):
     estado = db.Column(db.Integer, nullable=False)
 
 
-class mfcSchema(ma.ModelSchema):
+class mfcSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'idversion', 'nombre','anioimplementacion',
                   'paisfacturar', 'paisimplementar', 'estado', 'idflow')
@@ -407,7 +408,7 @@ class mfccampana(db.Model):
     estado = db.Column(db.Integer, nullable=False)
 
 
-class campanaSchema(ma.ModelSchema):
+class campanaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'idversion', 'nombre', 'nombreversion', 'fechainicio','costo','producto','descripcion',
                   'costoplataforma', 'fechafin', 'paisfacturar', 'paisimplementar', 'estado')
@@ -463,7 +464,7 @@ class mfccompradiaria(db.Model):
     estado = db.Column(db.Integer, nullable=False)
 
 
-class compradiariaSchema(ma.ModelSchema):
+class compradiariaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'nombre', 'fecha_inicio_mfc', 'fecha_fin_mfc', 'fecha_inicio_pl','fecha_fin_pl',
                   'costo_mfc', 'costo_pl','Plataforma','Version','Objetivo','Medio','odc','Presupuesto')
@@ -499,7 +500,7 @@ class rCampaings(db.Model):
     enddate = db.Column(db.DateTime, nullable=False)
 
 
-class rCampaingsSchema(ma.ModelSchema):
+class rCampaingsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('campaingid', 'campaingname', 'campaignspendinglimit', 'campaigndailybudget', 'campaignlifetimebudget',
                   'campaignobjective', 'campaignstatus', 'cost', 'accountsid', 'createdate', 'startdate', 'enddate')
@@ -535,7 +536,7 @@ class rCampaingMetrics(db.Model):
     UserMod = db.Column(db.String)
     UpdateDate = db.Column(db.DateTime)
 
-class rCampaingMetricsSchema(ma.ModelSchema):
+class rCampaingMetricsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('Cliente','Marca', 'MFC', 'ID Campaña', 'Campaña', 'Fecha Inicio', 'Fecha Fin','Objetivo','ID Nomenclatura', 'Nomenclatura',
             'Medio','Inversion Planificada', 'KPI Planificado', 'Costo','Alcance','Frecuencia','Impresiones','Clicks','Video 75', 'Conversiones',
@@ -560,7 +561,7 @@ class LocalMediaReports(db.Model):
     ID = db.Column(db.Integer, primary_key=True)
     IDMFC = db.Column(db.Integer)
     ADName = db.Column(db.String)
-    ReportDate = db.Column(db.DateTime)
+    ReportDate = db.Column(db.Integer)
     UnitCost = db.Column(db.Float)
     ODC = db.Column(db.String)
     Orden = db.Column(db.String)
@@ -578,6 +579,8 @@ class LocalMediaReports(db.Model):
     TypePublication = db.Column(db.String)
     Follows = db.Column(db.Integer)
     Navigation = db.Column(db.Integer)
+    SendMessage = db.Column(db.Integer)
+    OpenMessage = db.Column(db.Integer)
     Description = db.Column(db.String)
     CreatedDate = db.Column(db.TIMESTAMP)
     CreatedUser = db.Column(db.Integer)
@@ -585,7 +588,8 @@ class LocalMediaReports(db.Model):
     UpdatedUser = db.Column(db.Integer)
     State = db.Column(db.Integer)
     def __init__(self, ADName,IDMFC, ReportDate, UnitCost,ODC,Orden,BudgetUsed,Reach,Impressions, Clicks,
-     Videowachesat75,Listens, Conversions, CTR, Landingpageviews, UniqueViews,TimeOnPage,TypePublication, Follows, Navigation,CreatedUser):
+    Videowachesat75,Listens, Conversions, CTR, Landingpageviews, UniqueViews,TimeOnPage,TypePublication,
+    Follows, Navigation,SendMessage,OpenMessage,CreatedUser):
         self.ADName = ADName
         self.IDMFC = IDMFC
         self.ReportDate = ReportDate
@@ -606,16 +610,18 @@ class LocalMediaReports(db.Model):
         self.TypePublication = TypePublication
         self.Follows = Follows
         self.Navigation = Navigation
+        self.SendMessage = SendMessage
+        self.OpenMessage = OpenMessage
         self.CreatedUser = CreatedUser
         self.State = 1
 
-class LocalMediaReportsSchema(ma.ModelSchema):
+class LocalMediaReportsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        fields = ('ID','IDMFC', 'ADName', 'ReportDate', 'UnitCost', 'ODC', 'Orden', 'BudgetUsed', 'Reach', 'Impressions',
+        fields = ('ID','IDMFC', 'ADName', 'ReportDate', 'UnitCost', 'ODC', 'Orden', 'BudgetUsed', 'Reach', 'Impressions','Presupuesto',
                 'Clicks', 'Videowachesat75', 'Listens', 'Conversions', 'CTR', 'Landingpageviews', 'UniqueViews','Description',
-                'TimeOnPage', 'TypePublication', 'Follows', 'Navigation','State','Nombre Anuncio','Nombre Campaña')
+                'TimeOnPage', 'TypePublication', 'Follows', 'Navigation','State','Nombre Anuncio','Nombre Campaña','Medio','Objetivo','Marca','CampanaId','FlowId')
 
-class LocalMediaReportsCountSchema(ma.ModelSchema):
+class LocalMediaReportsCountSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('Por Revisar','Aprobados','Rechazados')
 
@@ -632,7 +638,7 @@ class PuestosOmgGT(db.Model):
     usering = db.Column(db.Integer)
     fechaing = db.Column(db.DateTime)
     estado = db.Column(db.Integer)
-class PuestosOmgGTSchema(ma.ModelSchema):
+class PuestosOmgGTSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'nombre','area','subarea','usermod','fechamod','usering','fechaing','estado')
 
@@ -657,7 +663,93 @@ class UsuarioOmgGT(db.Model):
     usering = db.Column(db.Integer)
     fechaing = db.Column(db.DateTime)
     estado = db.Column(db.Integer)
-class UsuarioOmgGTSchema(ma.ModelSchema):
+class UsuarioOmgGTSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         fields = ('id', 'nombre','area','subarea','usermod','fechamod','usering','fechaing','estado')
 
+
+class Visitias_Sitio(db.Model):
+    __table_args__ = {'schema': 'LaChalupa'}
+    __tablename__ = 'visitas_sitio'
+    id = db.Column(db.Integer, primary_key=True)
+    IP = db.Column(db.String)
+    date = db.Column(db.DateTime)
+    def __init__(self,IP,date):
+        self.IP = IP
+        self.date = date
+
+class Visitias_SitioSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        fields = ('id','IP','date')
+
+class usuarios_promocion_Sitio(db.Model):
+    __table_args__ = {'schema': 'LaChalupa'}
+    __tablename__ = 'usuarios_promocion'
+    id = db.Column(db.Integer, primary_key=True)
+    Nombre = db.Column(db.String)
+    Apellido = db.Column(db.String)
+    CUI = db.Column(db.String)
+    Email = db.Column(db.String)
+    Direccion = db.Column(db.String)
+    telefono = db.Column(db.String)
+    date = db.Column(db.DateTime)
+    def __init__(self,Nombre,Apellido,CUI,Email,Direccion,telefono,date):
+        self.Nombre = Nombre
+        self.Apellido = Apellido
+        self.CUI = CUI
+        self.Email = Email
+        self.Direccion = Direccion
+        self.telefono = telefono
+        self.date = date
+
+class usuarios_promocion_SitioSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        fields = ('id','IP','date')
+
+class usuarios_promocion_barca_Sitio(db.Model):
+    __table_args__ = {'schema': 'LaChalupa'}
+    __tablename__ = 'usuarios_promocion_barca'
+    id = db.Column(db.Integer, primary_key=True)
+    Nombre = db.Column(db.String)
+    Apellido = db.Column(db.String)
+    CUI = db.Column(db.String)
+    Email = db.Column(db.String)
+    Direccion = db.Column(db.String)
+    telefono = db.Column(db.String)
+    date = db.Column(db.DateTime)
+    def __init__(self,Nombre,Apellido,CUI,Email,Direccion,telefono,date):
+        self.Nombre = Nombre
+        self.Apellido = Apellido
+        self.CUI = CUI
+        self.Email = Email
+        self.Direccion = Direccion
+        self.telefono = telefono
+        self.date = date
+
+class usuarios_promocion_barca_SitioSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        fields = ('id','IP','date')
+    
+class usuarios_promocion_tonalight(db.Model):
+    __table_args__ = {'schema': 'LaChalupa'}
+    __tablename__ = 'usuarios_promocion_tonalight'
+    id = db.Column(db.Integer, primary_key=True)
+    Nombre = db.Column(db.String)
+    Apellido = db.Column(db.String)
+    CUI = db.Column(db.String)
+    Email = db.Column(db.String)
+    telefono = db.Column(db.String)
+    codigo = db.Column(db.String)
+    date = db.Column(db.DateTime)
+    date_premio = db.Column(db.DateTime)
+    tienda = db.Column(db.String)
+    state = db.Column(db.Integer)
+    def __init__(self,Nombre,Apellido,CUI,Email,telefono,codigo,date,state):
+        self.Nombre = Nombre
+        self.Apellido = Apellido
+        self.CUI = CUI
+        self.Email = Email
+        self.telefono = telefono
+        self.date = date
+        self.codigo = codigo
+        self.state = state

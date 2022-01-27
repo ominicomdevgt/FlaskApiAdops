@@ -2,26 +2,29 @@
 from flask import Flask, request
 import sys
 from flask import jsonify
-from app import app, db
+from flask_cors.core import CONFIG_OPTIONS
+from sqlalchemy.sql.expression import case
+from app import app, db, mail
 from flask_restful import reqparse, abort, Api, Resource
-from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema, LocalMedia, LocalMediaSchema,LocalMediaReports,LocalMediaReportsSchema,PuestosOmgGT,PuestosOmgGTSchema,LocalMediaReportsCountSchema,UsuarioOmgGT
+from models import Bitacora, BitacoraSchema, Dmarca, DmarcaSchema,Accountxmarca,AccountxMarcaSchema,Accounts,AccountsSchema, Dcliente, DclienteSchema,Errorscampaings,ErrorsCampaingsSchema, ReportSchema, LocalMedia, LocalMediaSchema, DetailLocalMedia, DetailLocalMediaSchema, ErrorsCampaingsCountSchema, Dcliente,DclienteSchema,CostSchema, LeadAdsCampaings, LeadAdsCampaingsSchema, Invitados,InvitadosSchema, mfcaprobacion,aprobacionSchema,Results_campaings,Results_campaingsSchema, rCampaings, rCampaingsSchema,rCampaingMetrics, rCampaingMetricsSchema, LocalMedia, LocalMediaSchema,LocalMediaReports,LocalMediaReportsSchema,PuestosOmgGT,PuestosOmgGTSchema,LocalMediaReportsCountSchema,UsuarioOmgGT,Visitias_Sitio,Visitias_SitioSchema,usuarios_promocion_Sitio, usuarios_promocion_barca_Sitio, usuarios_promocion_barca_SitioSchema,usuarios_promocion_tonalight
 import models
 from flask_sqlalchemy import SQLAlchemy,time
 from flask_marshmallow import Marshmallow
 from datetime import datetime, timedelta
 import os
-from flask_jwt_extended import create_access_token, create_refresh_token,jwt_required, jwt_refresh_token_required, get_jwt_identity,JWTManager
+from flask_jwt_extended import create_access_token, create_refresh_token,jwt_required, get_jwt_identity,JWTManager
 import jwt
 import re
 from sqlalchemy.sql import func,text, desc
-import numpy as mp
+import numpy as np
 from itsdangerous import (TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
-import Actualizacion_Datos#, Mis_Flows
-
+import Actualizacion_Datos
+from flask_mail import Mail, Message 
+import random
+import secrets
 parser = reqparse.RequestParser()
 
 api = Api(app)
-
 
 
 class GetBitacora(Resource):
@@ -251,15 +254,23 @@ class TokenJWT(Resource):
 
 
 class GetErrores(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idusuario):
         try:
             dmarcaSchema = ErrorsCampaingsSchema()
             dmarcaSchema = ErrorsCampaingsSchema(many=True)
             hoy = datetime.now().strftime("%Y-%m-%d")
-            query = db.session.query('iderror','idcuenta','cuenta','CampaingID','Camapingname','Error','TipoErrorID','DescripcionError','GrupoError','Icono','Comentario','Estado','Media','Fecha','tipousuario','plataforma','marca','cliente')
+            query = db.session.query('iderror','idcuenta','cuenta','CampaingID',
+            'Campaingname','Error','TipoErrorID','DescripcionError','GrupoError',
+            'Icono','Comentario','Estado','Media','Fecha','tipousuario','plataforma',
+            'marca','cliente','id_marca','id_cliente','FechaError')
             query = query.from_statement(text("""
-            (Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,d.Account as cuenta,a.CampaingID,b.Campaingname Camapingname,a.Error,a.TipoErrorID, c.Descripcion as DescripcionError,c.GrupoError,c.Icono,a.Comentario,a.Estado, d.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,c.tipousuario,d.Media as plataforma, IFNULL( m.id,"SIN ASIGNAR") marca, IFNULL(cl.id,"SIN ASIGNAR") cliente
+            (Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,
+            d.Account as cuenta,a.CampaingID,b.Campaingname Campaingname,a.Error,
+            a.TipoErrorID, c.Descripcion as DescripcionError,c.GrupoError,c.Icono,
+            a.Comentario,a.Estado, d.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,
+            c.tipousuario,d.Media as plataforma, IFNULL( m.id,"SIN ASIGNAR") id_marca,
+             m.nombre marca, IFNULL(cl.id,"SIN ASIGNAR") id_cliente, cl.nombre cliente, a.CreateDate 'FechaError'
                 from ErrorsCampaings a
 
                 INNER JOIN Campaings b on a.CampaingID=b.CampaingID
@@ -285,7 +296,7 @@ class GetErrores(Resource):
                 Select distinct a.idErrorsCampaings as iderror,d.AccountsID as idcuenta,d.Account as cuenta,a.CampaingID,
                 b.Campaingname Camapingname,a.Error,a.TipoErrorID, c.Descripcion as DescripcionError,
                 c.GrupoError,c.Icono,a.Comentario,a.Estado, d.Media, DATE_FORMAT(a.CreateDate, "%d/%m/%Y") as Fecha ,
-                c.tipousuario,d.Media as plataforma,"SIN ASIGNAR" marca, "SIN ASIGNAR" cliente
+                c.tipousuario,d.Media as plataforma,"SIN ASIGNAR" marca, "SIN ASIGNAR" cliente, 0 id_marca, 0 id_cliente,a.CreateDate 'FechaError'
                 from ErrorsCampaings a
 
                 INNER JOIN Campaings b on a.CampaingID=b.CampaingID
@@ -427,28 +438,27 @@ class GenToken(Resource):
 
 
 class GetReporte(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idusuario):
         try:
             hoy = datetime.now().strftime("%Y-%m-%d")
             campaings = []
             report = ReportSchema()
             report = ReportSchema(many=True)
-            query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP')
+            query = db.session.query('Account','idcliente','CampaingID','Marca','idmarca', 'Media','Campaingname','InversionConsumida','KPIPlanificado','StartDate' ,  'EndDate' ,'mes',   'PresupuestoPlan',  'KPI', 'KPIConsumido','State', 'TotalDias','DiasEjecutados','DiasPorservir','PresupuestoEsperado', 'PorcentajePresupuesto','PorcentajeEsperadoV','PorcentajeRealV','KPIEsperado', 'PorcentajeKPI','PorcentajeEsperadoK','PorcentajeRealK','EstadoKPI','EstadoPresupuesto','abr','CostoPorResultadoR','CostoPorResultadoP','Campana','Version','NombreMetrica','MetricaPlanificada','MetricaConsumida')
             query = query.from_statement(text("""
-                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,ACCOUNTS.Media Media, METRICAS.Campaingname Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
-                        date_format(ifnull( CAMPANAMP.StartDate,str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y')),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
-                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d') EndDate , 
-                        ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion))  PresupuestoPlan,
-                        SUBSTRING_INDEX (SUBSTRING_INDEX(METRICAS.Campaingname, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
-                        ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', CAMPANAMP.Campaignstatus State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,
+                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.CampaingID CampaingID,PLATAFORMA.nombre Media ,IMPLEMENTACIONES.multiplestiposg Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y'),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%d/%m/%Y') EndDate , 
+                        ifnull(ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion)),0)  PresupuestoPlan,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', IMPLEMENTACIONES.estado State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,CAMPANA.nombre Campana, IMPLEMENTACIONES.version Version, 
+                        METRICA.nombre as 'NombreMetrica', SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) as 'MetricaPlanificada', ifnull(sum(distinct METRICAS.result),0) 'MetricaConsumida',
                         '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
                         "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
 
-                        from dailycampaing METRICAS
-                        INNER JOIN Campaings CAMPANAMP on CAMPANAMP.Campaingname =  METRICAS.Campaingname
-                        INNER JOIN Accounts ACCOUNTS on CAMPANAMP.AccountsID = ACCOUNTS.AccountsID
-                        left JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.CampaignIDMFC=IMPLEMENTACIONES.id
+                        from MediaPlatformsReports.CampaingMetrics_daily METRICAS                        
+                        iNNER JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.CampaignIDMFC=IMPLEMENTACIONES.id
                         INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
                         INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
                         INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
@@ -457,13 +467,86 @@ class GetReporte(Resource):
                         INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
                         INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
                         INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                        INNER JOIN mfcgt.dplataforma PLATAFORMA ON PLATAFORMA.id = OBJETIVO.idplataforma
                         INNER JOIN mfcgt.mfcasignacion ASIGNACION on ASIGNACION.idmarca = MARCA.id 
-                        where 
+                        where
                         ASIGNACION.idusuario = {}
                         AND date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
-                        group by METRICAS.CampaingID
+                        and IMPLEMENTACIONES.multiplestiposg is not null and IMPLEMENTACIONES.id !=(98936)
+                        group by IMPLEMENTACIONES.ID
+                        
+                    Union ALL
+                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.ID CampaingID,PLATAFORMA.nombre Media ,IMPLEMENTACIONES.multiplestiposg Campaingname, round(sum(distinct METRICAS.UnitCost),2) as 'InversionConsumida',
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y'),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%d/%m/%Y') EndDate , 
+                        ifnull(ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion)),0)  PresupuestoPlan,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        (CASE
+                            WHEN (`METRICA`.`abreviatura` = 'IMP') THEN SUM(DISTINCT `METRICAS`.`Impressions`)
+                            WHEN (`METRICA`.`abreviatura` = 'VIS') THEN SUM(DISTINCT `METRICAS`.`Clicks`)
+                            WHEN (`METRICA`.`abreviatura` = 'CL') THEN SUM(DISTINCT `METRICAS`.`Clicks`)
+                            WHEN (`METRICA`.`abreviatura` = 'REP') THEN SUM(DISTINCT `METRICAS`.`Videowachesat75`)
+                            ELSE 0
+                        END) AS  'KPIConsumido',
+                        IMPLEMENTACIONES.estado State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,CAMPANA.nombre Campana, IMPLEMENTACIONES.version Version,
+                        METRICA.nombre as 'NombreMetrica', SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) as 'MetricaPlanificada', (CASE
+                            WHEN (`METRICA`.`abreviatura` = 'IMP') THEN SUM(DISTINCT `METRICAS`.`Impressions`)
+                            WHEN (`METRICA`.`abreviatura` = 'VIS') THEN SUM(DISTINCT `METRICAS`.`Clicks`)
+                            WHEN (`METRICA`.`abreviatura` = 'CL') THEN SUM(DISTINCT `METRICAS`.`Clicks`)
+                            WHEN (`METRICA`.`abreviatura` = 'REP') THEN SUM(DISTINCT `METRICAS`.`Videowachesat75`)
+                            ELSE 0
+                        END) as 'MetricaConsumida', 
+                        '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                        "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
+
+                        from MediaPlatformsReports.LocalMedia METRICAS                        
+                        iNNER JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.IDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                        INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                        INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                        INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                        INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                        INNER JOIN mfcgt.dplataforma PLATAFORMA ON PLATAFORMA.id = OBJETIVO.idplataforma
+                        INNER JOIN mfcgt.mfcasignacion ASIGNACION on ASIGNACION.idmarca = MARCA.id 
+                        where
+                        ASIGNACION.idusuario = {}
+                        AND date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
+                        and IMPLEMENTACIONES.multiplestiposg is not null and IMPLEMENTACIONES.id !=(98936)
+                        and METRICAS.State = 2
+                        group by IMPLEMENTACIONES.ID        
+                UNION ALL
+                    select CLIENTE.Nombre as Account,  CLIENTE.Id idcliente, MARCA.id idmarca, METRICAS.AdSetID CampaingID,PLATAFORMA.nombre Media ,IMPLEMENTACIONES.multiplestiposg Campaingname, round(sum(distinct METRICAS.Cost),2) as 'InversionConsumida',
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposa,'%m/%d/%Y'),'%d/%m/%Y') StartDate , MARCA.nombre as Marca,
+                        date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%d/%m/%Y') EndDate , 
+                        ifnull(ifnull(IMPLEMENTACIONES.costo,ifnull(IMPLEMENTACIONES.multiplescostosb,IMPLEMENTACIONES.bonificacion)),0)  PresupuestoPlan,
+                        SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) KPIPlanificado,OBJETIVO.Nombre as KPI, OBJETIVO.abreviatura as abr,
+                        ifnull(sum(distinct METRICAS.result),0) 'KPIConsumido', IMPLEMENTACIONES.estado State,MARCA.nombre Marca ,CLIENTE.nombre Cliente,date_format(now(),'%M') mes,CAMPANA.nombre Campana, IMPLEMENTACIONES.version Version, 
+                        METRICA.nombre as 'NombreMetrica', SUBSTRING_INDEX (SUBSTRING_INDEX(IMPLEMENTACIONES.multiplestiposg, '_', 14),'_',-1) as 'MetricaPlanificada', ifnull(sum(distinct METRICAS.result),0) 'MetricaConsumida',
+                        '0' as 'TotalDias','0' as 'DiasEjecutados','0' as 'DiasPorservir', "0" as 'PresupuestoEsperado',"0" as 'PorcentajePresupuesto',
+                        "0" as 'PorcentajeEsperadoV',"0" as 'PorcentajeRealV',"0" as 'KPIEsperado',"0" as 'PorcentajeKPI', "0" as 'PorcentajeEsperadoK',"0" as 'PorcentajeRealK', "0" as 'EstadoKPI', "0" as 'EstadoPresupuesto',"0" as 'CostoPorResultadoR', IMPLEMENTACIONES.rating' CostoPorResultadoP'
+
+                        from MediaPlatformsReports.AdSetMetrics_daily METRICAS                        
+                        iNNER JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on METRICAS.CampaignIDMFC=IMPLEMENTACIONES.id
+                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                        INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                        INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                        INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                        INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                        INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                        INNER JOIN mfcgt.dplataforma PLATAFORMA ON PLATAFORMA.id = OBJETIVO.idplataforma
+                        INNER JOIN mfcgt.mfcasignacion ASIGNACION on ASIGNACION.idmarca = MARCA.id 
+                        where
+                        ASIGNACION.idusuario = {}
+                        AND date_format(str_to_date(IMPLEMENTACIONES.multiplestiposb,'%m/%d/%Y'),'%Y-%m-%d')  > '{}'
+                        and IMPLEMENTACIONES.multiplestiposg is not null and IMPLEMENTACIONES.id !=(98936)
+                        group by IMPLEMENTACIONES.ID
                         ;
-                    """.format(idusuario,hoy)))
+                    """.format(idusuario,hoy,idusuario,hoy,idusuario,hoy)))
             result = report.dump(query)
             for row in result:
                 Nomenclatura = row['Campaingname']
@@ -478,7 +561,7 @@ class GetReporte(Resource):
                 if Nomenclatura:
                     if row['StartDate'] != '0000-00-00' and row['EndDate'] != '0000-00-00':
                         Start = datetime.strptime(row['StartDate'], "%d/%m/%Y")
-                        End = datetime.strptime(row['EndDate'], "%Y-%m-%d")
+                        End = datetime.strptime(row['EndDate'], "%d/%m/%Y")
                         row['TotalDias'] = End - Start
                         row['DiasEjecutados'] = datetime.now() -  Start
                         row['DiasPorservir'] = End - datetime.now()
@@ -537,13 +620,17 @@ class GetReporte(Resource):
                         row['PorcentajeRealK'] = round(float(row['PorcentajeRealK']),2)
                         campaings.append(row)
             campaings = jsonify(campaings)
+            exp = ''
             return campaings
 
         except Exception as e:
+            exp = e
             print(e)
+            return 'error:' + str(exp), 201
         finally:
             db.session.close()
             print(datetime.now())
+            
 
 
 class GetReporteCliente(Resource):
@@ -1162,7 +1249,7 @@ class GetLocalMedia(Resource):
 
 
 class PostLocalMedia(Resource):
-    @jwt_required
+    #@jwt_required
     def post(self,usuario_id):
         try:
             content = request.json
@@ -1170,29 +1257,49 @@ class PostLocalMedia(Resource):
                 if result == '0':
                     continue
                 else:
-                    idmfc = content[result][0]
-                    odc = content[result][1]
-                    orden = content[result][2]
-                    reportdate = content[result][3]
-                    adname = str(content[result][4])
-                    unicost = content[result][5]                    
-                    impressions = content[result][6]
-                    clicks = content[result][7]
-                    reach = content[result][8]
-                    videowachestat75 = content[result][9]
-                    listens = content[result][10]
-                    conversions = content[result][11]
-                    ctr = content[result][12]
-                    landingpageviews = content[result][13]
-                    uniqueviews = content[result][14]
-                    timeonpage = content[result][15]
-                    follows = content[result][16]
-                    navigation = content[result][17]
-                    createduser =  int(usuario_id)
+                    #print(len(content[result]))
+                    if len(content[result]) > 0:
+                        old = models.LocalMediaReports.query.filter(LocalMediaReports.IDMFC==int(content[result][0]),
+                        LocalMediaReports.ReportDate == int(content[result][3]), LocalMediaReports.State != 3 ).first()
+                        if old == None:
+                            idmfc = content[result][0]
+                            odc = content[result][1]
+                            orden = content[result][2]
+                            reportdate = content[result][3]
+                            adname = str(content[result][8])
+                            unicost = content[result][9]                    
+                            impressions = content[result][10]
+                            clicks = content[result][11]
+                            reach = content[result][12]
+                            videowachestat75 = content[result][13]
+                            listens = content[result][14]
+                            conversions = content[result][15]
+                            ctr = content[result][16]
+                            landingpageviews = content[result][17]
+                            uniqueviews = content[result][18]
+                            timeonpage = content[result][19]
+                            follows = content[result][20]
+                            navigation = content[result][21]
+                            tamano =  len(content[result])
+                            print(tamano)
+                            if tamano < 22:
+                                sendmessage = content[result][23]
+                                openmessage = content[result][24]
+                            else:
+                                sendmessage = 0
+                                openmessage = 0
+                            createduser =  int(usuario_id)
 
-                    a = LocalMediaReports(adname,idmfc,reportdate,unicost,odc,orden,None,reach,impressions,clicks,
-                    videowachestat75,listens,conversions,ctr,landingpageviews,uniqueviews,timeonpage,None,follows,navigation,createduser)
-                    db.session.add(a)
+                            a = LocalMediaReports(adname,idmfc,reportdate,unicost,odc,orden,None,reach,impressions,clicks,
+                            videowachestat75,listens,conversions,ctr,landingpageviews,uniqueviews,timeonpage,None,
+                            follows,navigation,sendmessage,openmessage,createduser)
+                            db.session.add(a)
+                        else:
+                            mensaje = 'Campaña: ' + str(content[result][0]) + ' ya fue cargada en la semana:' + str(content[result][3])
+                            return mensaje, 200    
+                    else:
+                        continue
+                    
             db.session.commit()
             return 'Formulario ingresado correctamente',201
         except Exception as e:
@@ -1257,8 +1364,17 @@ class CambioLocalMedia(Resource):
             a.State = estado
             a.UpdatedUser = idusuario
             if estado == '3':
+                usuario_correo = models.UsuarioOmgGT.query.filter(models.UsuarioOmgGT.id == a.CreatedUser).first()
+                compra_diaria = models.mfccompradiaria.query.filter(models.mfccompradiaria.id == a.IDMFC).first()
                 content = request.json
                 a.Description = content['Description']
+                msg = Message( 
+                                'Hola ' + usuario_correo.nombre, 
+                                sender ='support@wolvisor.com', 
+                                recipients = [usuario_correo.email] 
+                            ) 
+                msg.body = 'La campaña: ' 
+                #mail.send(msg) 
             db.session.commit()
             return 'Medio local actualizado correctamente Correctamente', 201
         except Exception as e:
@@ -1294,27 +1410,63 @@ class GetLocalMediaxMarca(Resource):
             print(datetime.now())
 
 class GetLocalMediaxUsuario(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idusuario):
         try:
-            cshema = LocalMediaReportsSchema()
-            cshema = LocalMediaReportsSchema(many=True)
+            result = None
+            user = UsuarioOmgGT.query.filter(UsuarioOmgGT.id==idusuario).first()
+            if user.idpuesto == 1029:
+                cshema = LocalMediaReportsSchema()
+                cshema = LocalMediaReportsSchema(many=True)
+                
+                query = db.session.query('ID','IDMFC','Presupuesto','Nombre Anuncio','Orden','ReportDate','Nombre Campaña','UnitCost','State','Medio','Objetivo','Marca')
+                query = query.from_statement(text("""
+                select distinct LOCALM.ID,IMPLEMENTACIONES.ID IDMFC,LOCALM.ODC 'Orden' , LOCALM.ADName 'Nombre Anuncio',
+                CLIENTE.nombre Medio,MARCA.nombre Marca,OBJETIVO.nombre Objetivo,CAMPANA.nombre 'Nombre Campaña' ,LOCALM.Orden 'Presupuesto'
+                ,STR_TO_DATE(CONCAT('2021',LOCALM.ReportDate,' MONDAY'), '%X%V %W') ReportDate
+                ,LOCALM.ADName,LOCALM.UnitCost,LOCALM.State 
+                from MediaPlatformsReports.LocalMedia LOCALM
+                inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+                INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma
+                
+                order by CreatedDate desc
+                limit 200;
+                """))
+                result = cshema.dump(query)
+            else:
+                cshema = LocalMediaReportsSchema()
+                cshema = LocalMediaReportsSchema(many=True)
+                
+                query = db.session.query('ID','IDMFC','Presupuesto','Nombre Anuncio','Orden','ReportDate','Nombre Campaña','UnitCost','State','Medio','Objetivo','Marca','CampanaId','FlowId')
+                query = query.from_statement(text("""
+                select distinct LOCALM.ID,IMPLEMENTACIONES.ID IDMFC,LOCALM.ODC 'Orden' , LOCALM.ADName 'Nombre Anuncio',
+                CLIENTE.nombre Medio,MARCA.nombre Marca,OBJETIVO.nombre Objetivo,CAMPANA.nombre 'Nombre Campaña' ,LOCALM.Orden 'Presupuesto'
+                ,STR_TO_DATE(CONCAT('2021',LOCALM.ReportDate,' MONDAY'), '%X%V %W') ReportDate
+                ,LOCALM.ADName,LOCALM.UnitCost,LOCALM.State, CAMPANA.id CampanaId, FLOW.id FlowId
+                from MediaPlatformsReports.LocalMedia LOCALM
+                inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+                INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+                INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+                INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+                INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+                INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+                INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+                INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+                INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+                INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma
+                order by CreatedDate desc
+                limit 100;
+                """))
+                result = cshema.dump(query)
             
-            query = db.session.query('ID','Nombre Anuncio','Orden','ReportDate','Nombre Campaña','UnitCost','State')
-            query = query.from_statement(text("""
-            select distinct LOCALM.ID, LOCALM.ADName 'Nombre Anuncio',CAMPANA.nombre 'Nombre Campaña' ,
-            LOCALM.Orden,date_format(LOCALM.ReportDate,'%M-%d') ReportDate,LOCALM.ADName,LOCALM.UnitCost,LOCALM.State 
-            from MediaPlatformsReports.LocalMedia LOCALM
-            inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
-            INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
-            INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
-            INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
-            INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
-            WHERE ASIGNACION.idusuario = {}
-             order by CreatedDate desc
-            limit 10;
-            """.format(idusuario)))
-            result = cshema.dump(query)
             return result
         except Exception as e:
             print(e)
@@ -1323,7 +1475,7 @@ class GetLocalMediaxUsuario(Resource):
             print(datetime.now())
 
 class GetLocalMediaCount(Resource):
-    @jwt_required
+    #@jwt_required
     def get(self,idusuario):
         try:
             cshema = LocalMediaReportsCountSchema()
@@ -1334,29 +1486,47 @@ class GetLocalMediaCount(Resource):
             select 
                 (select distinct count(LOCALM.ID) 
                         from MediaPlatformsReports.LocalMedia LOCALM
-                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
-                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
-                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
-                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
-                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+						inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+						INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+						INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+						INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+						INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+						INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+						INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+						INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+						INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+						INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma
+						INNER JOIN mfcgt.mfcasignacionmedio as ASIGNACION on ASIGNACION.idsubmedio = PLATAFORMA.idsubmedio
                         WHERE ASIGNACION.idusuario = {} and State = 1
                     ) as 'Por Revisar',
                 (select distinct count(LOCALM.ID) 
                         from MediaPlatformsReports.LocalMedia LOCALM
-                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
-                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
-                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
-                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
-                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+						inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+						INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+						INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+						INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+						INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+						INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+						INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+						INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+						INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+						INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma
+						INNER JOIN mfcgt.mfcasignacionmedio as ASIGNACION on ASIGNACION.idsubmedio = PLATAFORMA.idsubmedio
                         WHERE ASIGNACION.idusuario = {} and State = 2
                     ) as 'Aprobados',
                     (select distinct count(LOCALM.ID) 
                         from MediaPlatformsReports.LocalMedia LOCALM
-                        inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
-                        INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
-                        INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
-                        INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
-                        INNER JOIN mfcgt.mfcasignacion as ASIGNACION on MARCA.id = ASIGNACION.idmarca
+						inner JOIN mfcgt.mfccompradiaria as IMPLEMENTACIONES on LOCALM.IDMFC=IMPLEMENTACIONES.id
+						INNER JOIN mfcgt.mfccampana as CAMPANA on CAMPANA.id=IMPLEMENTACIONES.idcampana and CAMPANA.idversion=IMPLEMENTACIONES.idversion
+						INNER JOIN mfcgt.mfc as FLOW on FLOW.id=CAMPANA.idmfc and FLOW.idversion=CAMPANA.idversionmfc
+						INNER JOIN mfcgt.dmarca as MARCA on MARCA.id=FLOW.idmarca
+						INNER JOIN mfcgt.dcliente as CLIENTE on CLIENTE.id=MARCA.idcliente
+						INNER JOIN mfcgt.dformatodigital as FORMATO on FORMATO.id=IMPLEMENTACIONES.idformatodigital
+						INNER JOIN mfcgt.danuncio as ANUNCIO on ANUNCIO.id=FORMATO.idanuncio
+						INNER JOIN mfcgt.dmetrica as METRICA on METRICA.id=ANUNCIO.idmetrica
+						INNER JOIN mfcgt.dobjetivo as OBJETIVO on OBJETIVO.id=METRICA.idobjetivo
+						INNER JOIN mfcgt.dplataforma as PLATAFORMA on PLATAFORMA.id=OBJETIVO.idplataforma
+						INNER JOIN mfcgt.mfcasignacionmedio as ASIGNACION on ASIGNACION.idsubmedio = PLATAFORMA.idsubmedio
                         WHERE ASIGNACION.idusuario = {} and State = 3
                     ) as 'Rechazados'
             from MediaPlatformsReports.LocalMedia LOCALM limit 1;
@@ -1391,6 +1561,287 @@ class PostCSV(Resource):
             data = request.files['errores.csv']
         print('hola')
         return 'Archvio',201
+
+
+class Visistas(Resource):
+    def get(self,IP):
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        if Visitias_Sitio.query.filter(Visitias_Sitio.IP == IP, Visitias_Sitio.date > hoy ).count() > 0:
+            valor = random.randrange(2,4)
+            return {'ganador': False,'mensaje':valor},201
+        else:
+            nueva_visita = Visitias_Sitio(IP,datetime.now())
+            db.session.add(nueva_visita)
+            db.session.commit()
+            contador = Visitias_Sitio.query.filter(Visitias_Sitio.date > hoy).count()
+            if contador == 5 or contador == 10 or contador == 15 or contador == 20 or contador == 25 or contador == 30 or contador == 35 or contador == 40 or contador == 45 or contador == 50:
+                return {'ganador': True,'mensaje':1},201
+            else:
+                valor = random.randrange(2,4)
+                return {'ganador': False, 'mensaje':valor},201        
+        return {'ganador': False},201
+    def post(self,IP):
+        try:
+            content = request.json
+            user_old = usuarios_promocion_Sitio.query.filter((usuarios_promocion_Sitio.CUI == content['CUI']) |
+             (usuarios_promocion_Sitio.Email == content['Email'])).first()
+            if user_old is not None:
+                return {'result': 'error'},201
+            user = usuarios_promocion_Sitio(content['Nombre'],content['Apellido'],
+            content['CUI'],content['Email'],content['Direccion'],content['telefono'],datetime.now())
+            db.session.add(user)
+            db.session.commit()
+            return {'result': 'success'},201
+        except Exception as e:
+            return {'result': 'error'},401
+
+class Visistas_post(Resource):
+    def post(self,IP,Tipo):
+        try:
+            content = request.json
+            if Tipo == 'normal':
+                user_old = usuarios_promocion_Sitio.query.filter((usuarios_promocion_Sitio.CUI == content['CUI']) |
+                (usuarios_promocion_Sitio.Email == content['Email'])).first()
+                if user_old is not None:
+                    return {'result': 'error'},201
+                user = usuarios_promocion_Sitio(content['Nombre'],content['Apellido'],
+                content['CUI'],content['Email'],content['Direccion'],content['telefono'],datetime.now())
+                db.session.add(user)
+                db.session.commit()
+            elif Tipo == 'camisas':
+                user_old = usuarios_promocion_barca_Sitio.query.filter((usuarios_promocion_barca_Sitio.CUI == content['CUI']) |
+                (usuarios_promocion_Sitio.Email == content['Email'])).first()
+                if user_old is not None:
+                    return {'result': 'error'},201
+                user = usuarios_promocion_barca_Sitio(content['Nombre'],content['Apellido'],
+                content['CUI'],content['Email'],content['Direccion'],content['telefono'],datetime.now())
+                db.session.add(user)
+                db.session.commit()
+            return {'result': 'success'},201
+        except Exception as e:
+            return {'result': 'error'},401
+        
+class Correos(Resource):
+    def post(self):
+        try:
+            content = request.json
+            msg = Message( 
+
+                'Certificado Parrilleros Victoria ' , 
+                sender ='support@wolvisor.com', 
+                recipients = [content['email']] 
+            ) 
+            msg.html = """
+                <b>Felicidades {}</b>
+                <img src="https://drive.google.com/uc?export=view&id=1hYEOxm4mplhNu5zepKdLv609lczITGno" alt="Parrilleros"> 
+            """.format(content['name'])
+            msg.attach = content['certificate'] 
+            mail.send(msg)
+            return {'error': False},201
+        except Exception as e:
+            return {'result': True},200
+
+
+class Preguntas_barca(Resource):
+    #@jwt_required
+    def post(self,IP):
+        try:
+            hoy = datetime.now().strftime("%Y-%m-%d")
+            if Visitias_Sitio.query.filter(Visitias_Sitio.IP == IP, Visitias_Sitio.date > hoy ).count() > 0:
+    
+                return {'result': 'ip no valida'},201
+            else:
+                nueva_visita = Visitias_Sitio(IP,datetime.now())
+                #db.session.add(nueva_visita)
+                #db.session.commit()
+                content = request.json
+                randdash = np.random.choice(range(1,9), 5, replace=False)
+                json_preguntas = []
+                for i,x in enumerate(randdash):
+                    if x == 1:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿En qué año se fundó el FC Barcelona?',
+                            'respuesta1':'1809',
+                            'respuesta2':'1899',
+                            'respuesta3':'1918',
+                            'respuesta4':'1900',
+                        }
+                    elif x == 2:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Con qué entrenador ganó el FC Barcelona su primera copa de Europa?',
+                            'respuesta1':'Josep Guardiala',
+                            'respuesta2':'Frank Rijkaard',
+                            'respuesta3':'Johan Cruyff',
+                            'respuesta4':'Louis Van Gaal',
+                        }
+                    elif x == 3:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Cuál era el dorsal del legendario J Cruyff?',
+                            'respuesta1':'14',
+                            'respuesta2':'20',
+                            'respuesta3':'10',
+                            'respuesta4':'19',
+                        }
+                    elif x == 4:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿En el 2021 que cambió de Victoria Frost?',
+                            'respuesta1':'Su sabor',
+                            'respuesta2':'Su presentación',
+                            'respuesta3':'Su microfiltrado en frío',
+                            'respuesta4':'Todo lo anterior',
+                        }
+                    elif x == 5:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Cuál es la capacidad del Campo Nou?',
+                            'respuesta1':'99,354 Personas',
+                            'respuesta2':'89,106 Personas',
+                            'respuesta3':'105,000 Personas',
+                            'respuesta4':'94,565 Personas',
+                        }
+                    elif x == 6:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Cuántas Copas del Rey ha ganado el FCB?',
+                            'respuesta1':'31',
+                            'respuesta2':'24',
+                            'respuesta3':'27',
+                            'respuesta4':'22',
+                        }
+                    elif x == 7:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Quién es el máximo goleador de la historia del FCB?',
+                            'respuesta1':'Leo Messi',
+                            'respuesta2':"Samuel Eto'o",
+                            'respuesta3':'César Rodriguez',
+                            'respuesta4':'J. Cruyff',
+                        }
+                    elif x == 8:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿Cuál es el premio de calidad internacional que ganó Victoria Frost?',
+                            'respuesta1':'Monde Selection Gran Oro',
+                            'respuesta2':'Monde Selection Silver',
+                            'respuesta3':'Monde Selection Cobre',
+                            'respuesta4':'Monde Selection Oro',
+                        }
+                    elif x == 9:
+                        pregunta = {
+                            'Pregunta': str(i+1) + '.¿La Nueva Fórmula de Victoria Frost tiene?',
+                            'respuesta1':'Más color',
+                            'respuesta2':'Más espuma',
+                            'respuesta3':'Más olor',
+                            'respuesta4':'Más sabor, más refrescante',
+                        }
+                    json_preguntas.append(pregunta)
+                
+                return json_preguntas,200
+        except Exception as e:
+            return {'result': True},200
+
+class RespuestasPreguntas_barca(Resource):
+    #@jwt_required
+    def post(self):
+        try:
+            content = request.json
+            if len(content) < 5:
+                return {'ganador': False},200
+            for result in content:
+                result_sp = result['pregunta'].split('.',2)
+                if result_sp[1] == '¿En qué año se fundó el FC Barcelona?':
+                    if result['respuesta'] != '1899':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Con qué entrenador ganó el FC Barcelona su primera copa de Europa?':
+                    if result['respuesta'] != 'Johan Cruyff':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Cuál era el dorsal del legendario J Cruyff?':
+                    if result['respuesta'] != '14':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿En qué año se lanzó al mercado Victoria Frost?':
+                    if result['respuesta'] != '2008':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿En el 2021 que cambió de Victoria Frost?':
+                    if result['respuesta'] != 'Todo lo anterior':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Cuál es la capacidad del Campo Nou?':
+                    if result['respuesta'] != '99,354 Personas':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Cuántas Copas del Rey ha ganado el FCB?':
+                    if result['respuesta'] != '31':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Quién es el máximo goleador de la historia del FCB?':
+                    if result['respuesta'] != 'Leo Messi':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿Cuál es el premio de calidad internacional que ganó Victoria Frost?':
+                    if result['respuesta'] != 'Monde Selection Silver':
+                        return {'ganador': False},200
+                elif result_sp[1] == '¿La Nueva Fórmula de Victoria Frost tiene?':
+                    if result['respuesta'] != 'Más sabor, más refrescante':
+                        return {'ganador': False},200
+                else:
+                    return {'ganador': False},200
+            return {'ganador': True},200
+        except Exception as e:
+            return {'error': True},200
+
+        
+
+class PostTonaLight(Resource):
+    def post(self):
+        try:
+            content = request.json
+            user_old = usuarios_promocion_tonalight.query.filter((usuarios_promocion_tonalight.CUI == content['CUI']) |
+             (usuarios_promocion_tonalight.Email == content['Email'])).first()
+            if user_old is not None:
+                return {'result': 'error'},201
+            codigo = ''.join(random.choice('0123456789ABCDEF') for i in range(7))
+            user = usuarios_promocion_tonalight(content['Nombre'],content['Apellido'],
+            content['CUI'],content['Email'],content['telefono'],codigo,datetime.now(),0)
+            db.session.add(user)
+            db.session.commit()
+            content = request.json
+            msg = Message( 
+
+                'Tona Light' , 
+                sender ='Cerveza Tona', 
+                recipients = [content['Email']] 
+            ) 
+            msg.html = """
+                <img src="https://cervezatona.com/assets/img/To%C3%B1a-header.png" alt="tona" width="500" height="600">
+                <br>
+                <h3 sytle="color:black">
+                <b>Felicidades {}</b> Te has ganado 2 cervezas Toña Light para probar <br> el nuevo sabor de Nicaragua <br> </h3>
+                <h2>Código: {} </h2><br> 
+                <h4>
+
+                Puedes canjear tu premio en cualquier SuperExpress y AMPM. <br>
+                Recuerda llevar tus 2 botellas retornables vacías para canjear tu premio.<br>
+                Fecha de caducidad 30/12/2021. <br> 
+                Si tienes un problema con tu canje, comunícate al correo: sac@ccn.com.ni.
+                </h4>
+                <img src="https://cervezatona.com/assets/img/To%C3%B1a-footer.png" alt="tona" width="500" >
+            """.format(content['Nombre'],codigo)
+            mail.send(msg)
+            return {'codigo': codigo},201
+        except Exception as e:
+            return {'result': 'error'},401
+    def put(self):
+        try:
+            content = request.json
+            a = usuarios_promocion_tonalight.query.filter(usuarios_promocion_tonalight.codigo==content["CODIGO"],
+            usuarios_promocion_tonalight.CUI==content['CUI']).first()
+            if a == None:
+                return { 'success':False,'result': 'Codigo no existe'},201
+            if a.state == 1:
+                return {'success':False,'result': 'Codigo ya Canjeado'},201
+            a.tienda = content['TIENDA']
+            a.date_premio = datetime.now()
+            a.state = 1
+            db.session.commit()
+            return {'success':True, 'result':'Codigo Canjeado Exitosamente'}, 201
+        except Exception as e:
+            print(e)
+            return 'Error al canjear el codigo', 400
+        finally:
+            db.session.close()
+            pass            
 ### Mis Flows
 ##
 ## Se tiene que agregar cada ruta a la aplicacion, ruta -> class
@@ -1449,6 +1900,15 @@ api.add_resource(CambioLocalMedia, '/Reports/LocalMediaState/<string:id>&<string
 #Actualizacion Datos
 api.add_resource(Actualizacion_Datos.GetMetricsCampaing, '/DatosReportes/<string:IDMFC>&<string:Mes>')
 api.add_resource(Actualizacion_Datos.UpdateMetricsCamps, '/DatosReportes/')
+#Promocion Victoria Frost
+api.add_resource(Visistas, '/api/Frost/promocion/<string:IP>')
+api.add_resource(Visistas_post, '/api/Frost/promocion/<string:IP>&<string:Tipo>')
+api.add_resource(Preguntas_barca, '/api/Frost/preguntas/<string:IP>')
+api.add_resource(RespuestasPreguntas_barca, '/api/Frost/preguntas/2')
+api.add_resource(Correos, '/email')
+api.add_resource(PostTonaLight, '/api/tonalight')
+#Promocion Vicorita Clasica Día del
+
 if __name__ == '__main__':
     JWTManager(app)
     app.run(debug=True,port=5050)
